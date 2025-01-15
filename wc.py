@@ -37,46 +37,6 @@ API_KEY = "sk-proj-I1Vzl7wsbXts_tT-JDoLFvZMaJmKJHDrDjSdv4B1FV-Ex04yq-8Wmg4cdDpNY
 client = OpenAI(api_key=API_KEY)
 
 def get_assistant_instructions(mode):
-    """Get the instructions for the assistant based on mode"""
-    if mode == "Calculate WPI Ratings":
-        return """You are a medical report analyzer specializing in workers' compensation cases.
-        Your task is to analyze medical reports and extract:
-        1. WPI ratings for each body part mentioned (including pain add-ons)
-        2. Combined PD rating
-        3. Future medical cost estimates
-        4. PD payment calculations
-        
-        Please format your response as a JSON object with the following structure:
-        {
-            "body_parts": {
-                "part_name": {
-                    "wpi": float,
-                    "pain": float (0-3),
-                    "rating_string": string
-                }
-            },
-            "combined_values": {
-                "final_pd": float,
-                "total_pd_payment": float
-            },
-            "future_medical": {
-                "total_annual_cost": float,
-                "total_ten_year_cost": float
-            }
-        }"""
-    else:
-        return """You are a medical report summarizer specializing in workers' compensation cases.
-        Please provide a comprehensive summary of the medical report including:
-        1. Patient demographics and history
-        2. Key findings and diagnoses
-        3. Treatment recommendations
-        4. Work restrictions and limitations
-        5. Future medical needs
-        6. Prognosis
-        
-        Format your response in markdown with clear headings and bullet points."""
-
-def get_assistant_instructions(mode):
     """Get instructions for the assistant based on mode"""
     if mode == "Calculate WPI Ratings":
         return """You are a QME assistant specialized in analyzing medical reports and extracting specific data points.
@@ -96,15 +56,13 @@ def get_assistant_instructions(mode):
     Important Instructions for Dental/MMI:
     - ALWAYS check the ENTIRE report for dental ratings or MMI, as they may appear in any section
     - Look for terms like "dental", "teeth", "mastication", "jaw"
-    - Convert any MMI percentages to WPI values
-    - Note the page/line reference where dental ratings are found
     
     Search through the entire document carefully for these details. They may appear in different sections.
     - The occupation might be listed under employment history or work status
     - Age might be listed in patient demographics or history
-    - WPI ratings are typically found in the impairment rating section
+    - WPI ratings are typically found in the final review section at the end of the report
     - Pain add-ons are often mentioned alongside the impairment ratings or in a separate pain discussion section
-    - Dental ratings are usually in separate dental reports - make sure to check for these
+    - Dental ratings are usually in separate dental reports - make sure to check for these, they will not be in the final review with the others. 
     
     Always return your findings in this exact JSON format:
     {
@@ -142,7 +100,6 @@ def get_assistant_instructions(mode):
     - Look for dental MMI status
     - Extract dental WPI ratings if present
     - Include pain add-ons for dental if mentioned
-    - Always include the page/line reference where found
     
     If you can't find a value, use null. Never skip fields or change the format.
     
@@ -151,14 +108,14 @@ def get_assistant_instructions(mode):
         "occupation": "Construction Worker",
         "age": 45,
         "body_parts": {
-            "left knee": {"wpi": 15, "pain": 2},
-            "right knee": {"wpi": 12, "pain": 1},
-            "lumbar spine": {"wpi": 8, "pain": 3}
+            "left knee/LEG-LENGTH": {"wpi": 15, "pain": 2},
+            "right knee/LEG-LENGTH": {"wpi": 12, "pain": 1},
+            "spine/Cervical - Diagnosis-related Estimate (DRE)": {"wpi": 8, "pain": 3}
         },
-        "dental": {
+        "dental/MASTIFICATION": {
             "wpi": 5,
             "pain": 1,
-            "location": "page 8, line 15"
+            "location": "Page 1, Line 12"
         }
     }"""
     elif mode == "Summarize Report":
@@ -312,22 +269,24 @@ Please note the following key points:
 
 2. Rating String Format:
    For each body part, provide a rating string in this format:
-   - Example: "15.01.01.00 - 13 - [3]8 - 410F - 15%"
+   - Example: "15.01.01.00 - 8 - [1.4]12 - 410F - 15%"
    Where:
    - First part is the impairment code
-   - Second part is the occupational group
-   - Third part is the base rating [with adjustment]
-   - Fourth part is the final rating with variant letter
-   - Fifth part is the final percentage
+   - Second part is the standard wpi + pain wpi = base rating
+   - Third part is the base rating [  multiplied by 1.4]
+   - Fourth part is the occupational adjustment
+   - Fifth part is the age_adjusted which is the final percentage
 
 3. Final PD Calculation:
    - List each body part's final PD percentage
    - Show the combined value calculations
    - Provide the final combined PD percentage
-   - Calculate the PD payout using the formula:
-     * For dates of injury before 2013: Weeks × Rate
-     * For dates of injury 2013-2018: Weeks × Rate × 1.4
-     * For dates of injury 2019 or later: Weeks × Rate × 1.6
+   - Calculate the PD payout
+     - Weeks of PD 529
+     - Age on DOI 65
+     - PD Weekly Rate:$290.00
+     - Total PD Payout
+       
 
 4. Future Medical Costs:
    For each body part that requires future medical care:
@@ -345,40 +304,30 @@ Please note the following key points:
    {
      "ratings": {
        "body_part_1": {
-         "rating_string": "15.01.01.00 - 13 - [3]8 - 410F - 15%",
-         "final_pd": 15,
-         "annual_medical_cost": 5000,
-         "ten_year_medical_cost": 58000
+         "rating_string": "15.01.01.00 - 13 - [1.4]8 - 410F - 15%",
+      
        },
        "body_part_2": {
          ...
        }
      },
      "combined_values": {
-       "calculation": "15 C 10 = 24%",
+       "15 C 10 = 24%",
        "final_pd": 24,
-       "weeks": 115.25,
+       "weeks": 529,
        "rate": 290,
-       "multiplier": 1.6,
-       "total_pd_payment": 53500
+       "total_pd_payment": 153482
      },
      "future_medical": {
        "total_annual_cost": 8000,
        "total_ten_year_cost": 92000,
-       "breakdown_by_body_part": {
-         "body_part_1": {
-           "annual": 5000,
-           "ten_year": 58000,
-           "major_components": ["medications", "therapy"]
-         }
-       }
      }
    }
    ```
 
 6. Bilateral Conditions:
-   - When you encounter bilateral conditions (e.g., "bilateral knees"), split them into separate entries for left and right
-   - Example: "bilateral knees" becomes "left knee" and "right knee"
+   - When you encounter bilateral conditions (e.g., "bilateral knees"), 
+   - Example: "right knee and left knees" because bilateral knees.
 
 7. References:
    - Document the page and line numbers for all ratings
@@ -399,7 +348,7 @@ def find_occupation_group(occupation):
         
         if not result.empty:
             # Return the group number as a string
-            return str(result['group_number'].iloc[0])
+            return str(result['occupational_adjustment.group_number'].iloc[0])
             
         # If not found, try searching with more flexible matching
         words = occupation.split()
@@ -408,7 +357,7 @@ def find_occupation_group(occupation):
                 result = occupations[occupations['occupation_title'].str.lower().str.contains(word, na=False)]
                 if not result.empty:
                     st.info(f"Found occupation group using partial match: {result['occupation_title'].iloc[0]}")
-                    return str(result['group_number'].iloc[0])
+                    return str(result['occupational_adjustment.group_number'].iloc[0])
         
         st.warning(f"No occupation group found for '{occupation}'. Please check the occupation title.")
         return None

@@ -1,0 +1,217 @@
+Section,Title,Code,Description
+3,Cardiovascular System  Heart & Aorta,03.06.00.00,Arrhythmia
+3,Cardiovascular System  Heart & Aorta,03.04.00.00,Cardiomyopathies
+3,Cardiovascular System  Heart & Aorta,03.03.00.00,Congenital Heart Disease
+3,Cardiovascular System  Heart & Aorta,03.02.00.00,Coronary Heart Disease
+3,Cardiovascular System  Heart & Aorta,03.05.00.00,Pericardial Heart Disease
+3,Cardiovascular System  Heart & Aorta,03.01.00.00,Valvular Heart Disease
+4,Cardiovascular System  Systemic & Pulmonary Arteries,04.02.00.00,Aortic Disease
+4,Cardiovascular System  Systemic & Pulmonary Arteries,04.01.00.00,Hypertensive Cardiovascular Disease
+4,Cardiovascular System  Systemic & Pulmonary Arteries,04.03.02.00,"Peripheral Vascular Disease, Lower Extremities"
+4,Cardiovascular System  Systemic & Pulmonary Arteries,04.03.01.00,"Peripheral Vascular Disease, Upper Extremities"
+4,Cardiovascular System  Systemic & Pulmonary Arteries,04.04.00.00,Pulmonary Circulation Disease
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.03.00.00,Arousal Disorder
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.06.00.00,Behavioral/Emotional Disorder
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.11.02.01,Chronic Pain  Lower Extremities  Causalgia
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.11.02.02,Chronic Pain  Lower Extremities  Post-traumatic Neuralgia
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.11.02.03,Chronic Pain  Lower Extremities  Reflex Sympathetic Dystrophy
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.11.01.01,Chronic Pain  Upper Extremities  Causalgia
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.11.01.02,Chronic Pain  Upper Extremities  Post-traumatic Neuralgia
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.11.01.03,Chronic Pain  Upper Extremities  Reflex Sympathetic Dystrophy
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.04.00.00,Cognitive Impairment
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.01.00.00,Consciousness Disorder
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.05.00,Cranial Nerve  Facial
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.07.00,Cranial Nerve  Glossopharyngeal & Valgus
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.09.00,Cranial Nerve  Hypoglossal
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.03.00,"Cranial Nerve  Oculomotor, Trochlear & Abducens"
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.01.00,Cranial Nerve  Olfactory
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.02.00,Cranial Nerve  Optic
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.08.00,Cranial Nerve  Spinal Accessory
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.04.00,Cranial Nerve  Trigeminal
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.06.02,Cranial Nerve  Vestibulocochlear  Tinnitus
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.07.06.01,Cranial Nerve  Vestibulocochlear  Vertigo
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.02.00.00,Episodic Neurologic Disorder
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.05.00.00,Language Disorder
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.12.03.02,Peripheral Nerve System  Lower Extremity  Motor
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.12.03.01,Peripheral Nerve System  Lower Extremity  Sensory
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.12.01.02,Peripheral Nerve System  Spine  Motor
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.12.01.01,Peripheral Nerve System  Spine  Sensory
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.12.02.02,Peripheral Nerve System  Upper Extremity  Motor
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.12.02.01,Peripheral Nerve System  Upper Extremity  Sensory
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.10.03.00,Spinal Cord Disorder  Anorectal
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.10.01.00,Spinal Cord Disorder  Respiratory
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.10.04.00,Spinal Cord Disorder  Sexual
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.10.02.00,Spinal Cord Disorder  Urinary
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.08.00.00,"Station, Gait, Movement"
+13,"Central & Peripheral Nervous System,disorders,Cranial Nerve, Upper Extremities, Chronic Pain, Peripheral Nerve System",13.09.00.00,Upper Extremities
+6,Digestive System,06.02.00.00,"Colon, Rectum, Anus"
+6,Digestive System,06.03.00.00,Enterocutaneous Fistulas
+6,Digestive System,06.05.00.00,Hernias
+6,Digestive System,06.04.00.00,Liver/Biliary Tract
+6,Digestive System,06.01.00.00,Upper Digestive Tract
+11,"Ear, Nose & Throat, Face",11.01.01.00,Ear  Hearing Impairment
+11,"Ear, Nose & Throat, Face",11.01.02.00,Ear  Vestibular Disorder
+11,"Ear, Nose & Throat, Face",11.02.01.00,Face/cosmetic
+11,"Ear, Nose & Throat, Face",11.02.02.00,Face/eye/cosmetic
+11,"Ear, Nose & Throat, Face",11.03.02.00,Nose/Throat/Related Structures  Mastication & Deglutition
+11,"Ear, Nose & Throat, Face",11.03.03.00,Nose/Throat/Related Structures  Olfaction & Taste
+11,"Ear, Nose & Throat, Face",11.03.01.00,Nose/Throat/Related Structures  Respiration
+11,"Ear, Nose & Throat, Face",11.03.04.00,Nose/Throat/Related Structures  Voice & Speech
+10,Endocrine System,10.01.00.00,Diabetes Mellitus
+9,Hematopoietic System,09.01.00.00,Hematopoietic Impairment
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.02.00,Ankle  Ankylosis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.03.00,Ankle  Arthritis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.10.02,Ankle  Diagnosis-based Estimate  Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.10.01,Ankle  Diagnosis-based Estimate  Ligament Instability
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.01.00,Ankle  Muscle Atrophy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.05.00,Ankle  Muscle Strength
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.06.00,Ankle  Other
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.07.04.00,Ankle  Range of Motion
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.04.10.00,Femur  Diagnosis-based Estimate  Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.02.00,Foot  Ankylosis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.03.00,Foot  Arthritis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.10.06,Foot  Diagnosis-based Estimate  Avascular Necrosis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.10.04,Foot  Diagnosis-based Estimate  Calvus
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.10.01,Foot  Diagnosis-based Estimate  Hind Foot Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.10.03,Foot  Diagnosis-based Estimate  Intra-articular Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.10.02,Foot  Diagnosis-based Estimate  Loss of Tibia
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.10.07,Foot  Diagnosis-based Estimate  Metatarsal Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.10.05,Foot  Diagnosis-based Estimate  Rocker Bottom
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.01.00,Foot  Muscle Atrophy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.05.00,Foot  Muscle Strength
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.06.00,Foot  Other
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.08.04.00,Foot  Range of Motion
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.02.00,Hip  Ankylosis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.03.00,Hip  Arthritis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.10.03,Hip  Diagnosis-based Estimate  Hip/Arthroplasty
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.10.02,Hip  Diagnosis-based Estimate  Hip/Femoral Neck Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.10.01,Hip  Diagnosis-based Estimate  Hip Replacement
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.10.04,Hip  Diagnosis-based Estimate  Trochanteric Bursitis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.01.00,Hip  Muscle Atrophy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.05.00,Hip  Muscle Strength
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.06.00,Hip  Other
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.03.04.00,Hip  Range of Motion
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.02.00,Knee  Ankylosis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.03.00,Knee  Arthritis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.05,Knee  Diagnosis-based Estimate  Cruciate/Collateral Ligament
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.02,Knee  Diagnosis-based Estimate  Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.04,Knee  Diagnosis-based Estimate  Meniscectomy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.03,Knee  Diagnosis-based Estimate  Patellectomy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.06,Knee  Diagnosis-based Estimate  Plateau Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.09,Knee  Diagnosis-based Estimate  Proximal Tibial Osteotomy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.01,Knee  Diagnosis-based Estimate  Subluxation/Dislocation
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.07,Knee  Diagnosis-based Estimate  Supra/Intercondylar Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.10.08,Knee  Diagnosis-based Estimate  Total Replacement
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.01.00,Knee  Muscle Atrophy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.05.00,Knee  Muscle Strength
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.06.00,Knee  Other
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.05.04.00,Knee  Range of Motion
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.02.01,Leg  Amputation/Knee Proximally
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.02.02,Leg  Amputation/MTP Joint Proximally
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.06.00,Leg  Causalgia/RSD
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.07.00,Leg  Gait Derangement
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.01.00,Leg  Limb Length
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.08.00,Leg  Other
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.04.00,Leg  Peripheral Nerve
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.03.00,Leg  Skin Loss
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.01.05.00,Leg  Vascular
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.02.10.00,Pelvis  Diagnosis-based Estimate (DBE)  Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.06.10.00,Tibia/Fibula  Diagnosis-based Estimate  Fracture
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.09.06.00,Toes  Amputation
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.09.02.00,Toes  Ankylosis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.09.03.00,Toes  Arthritis
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.09.01.00,Toes  Muscle Atrophy
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.09.05.00,Toes  Muscle Strength
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.09.07.00,Toes  Other
+17,"Lower Extremities, leg, pelvis, hip, femur, knee,tibia,fibula,ankle,foot, toes",17.09.04.00,Toes  Range of Motion
+14,Mental & Behavioral Disorders,14.01.00.00,Psychiatric  Mental and Behavioral
+18,Pain,18.00.00.00,Pain  Use FEC Rank for Involved Body Part
+5,Respiratory System,05.01.00.00,Asthma
+5,Respiratory System,05.03.00.00,Cancer
+5,Respiratory System,05.02.00.00,Respiratory Disorders
+8,Skin,08.03.00.00,Contact Dermatitis
+8,Skin,08.01.00.00,Disfigurement
+8,Skin,08.04.00.00,Latex Allergy
+8,Skin,08.02.00.00,Scars & Skin Grafts
+8,Skin,08.05.00.00,Skin Cancer
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.01.01.00,Cervical  Diagnosis-related Estimate (DRE)
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.01.02.06,Cervical  Range of Motion  Nerve Root/Spinal Cord  Motor
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.01.02.05,Cervical  Range of Motion  Nerve Root/Spinal Cord  Sensory
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.01.02.01,Cervical  Range of Motion (ROM)  Fracture
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.01.02.02,Cervical  Range of Motion  Soft Tissue Lesion
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.01.02.03,"Cervical  Range of Motion  Spondylolysis, no operation"
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.01.02.04,"Cervical  Range of Motion  Stenosis, with operation"
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.04.05.00,Corticospinal Tract  Anorectal Impairment
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.04.00.00,Corticospinal Tract  Bladder Impairment
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.04.01.00,Corticospinal Tract  One Upper Extremity
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.04.07.00,Corticospinal Tract  Respiratory Impairment
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.04.06.00,Corticospinal Tract  Sexual Impairment
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.04.03.00,Corticospinal Tract  Station/Gait Disorder
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.04.02.00,Corticospinal Tract  Two Upper Extremities
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.03.01.00,Lumbar  Diagnosis-related Estimate
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.03.02.01,Lumbar  Range of Motion  Fracture
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.03.02.06,Lumbar  Range of Motion  Nerve Root/Spinal Cord  Motor
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.03.02.05,Lumbar  Range of Motion  Nerve Root/Spinal Cord  Sensory
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.03.02.02,Lumbar  Range of Motion  Soft Tissue Lesion
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.03.02.03,"Lumbar  Range of Motion  Spondylolysis, no operation"
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.03.02.04,"Lumbar  Range of Motion  Stenosis, with operation"
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.05.01.00,Pelvic  Healed Fracture
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.05.03.00,Pelvic  Healed Fracture with Deformity
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.05.02.00,Pelvic  Healed Fracture with Displacement
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.02.01.00,Thoracic  Diagnosis-related Estimate
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.02.02.01,Thoracic  Range of Motion  Fracture
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.02.02.06,Thoracic  Range of Motion  Nerve Root/Spinal Cord  Motor
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.02.02.05,Thoracic  Range of Motion  Nerve Root/Spinal Cord  Sensory
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.02.02.02,Thoracic  Range of Motion  Soft Tissue Lesion
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.02.02.03,"Thoracic  Range of Motion  Spondylolysis, no operation"
+15,"Spine,Cervical,Thoracic,Lumbar,Corticospinal Tract,Pelvic",15.02.02.04,"Thoracic  Range of Motion  Stenosis, with operation"
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.01.04,Arm  Amputation/All Fingers at MP Joint Proximally
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.01.02,Arm  Amputation/Bicipital Insertion Proximally
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.01.01,Arm  Amputation/Deltoid Insertion Proximally
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.01.03,Arm  Amputation/Wrist Proximally
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.04.00,Arm  Grip/Pinch Strength
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.05.00,Arm  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.02.01,Arm  Peripheral Neuropathy  Brachial Plexus
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.02.02,Arm  Peripheral Neuropathy  Carpal Tunnel
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.02.04,Arm  Peripheral Neuropathy  CRPS I
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.02.05,Arm  Peripheral Neuropathy  CRPS II
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.02.03,Arm  Peripheral Neuropathy  Entrapment/Compression
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.01.03.00,Arm  Peripheral Vascular
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.03.02.00,Elbow/Forearm  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.03.01.00,Elbow/Forearm  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.05.02.00,Hand/Multiple Fingers  Amputation
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.05.04.00,Hand/Multiple Fingers  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.05.01.00,Hand/Multiple Fingers  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.05.03.00,Hand/Multiple Fingers  Sensory
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.02.02,Index  Amputation
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.02.04,Index  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.02.01,Index  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.02.03,Index  Sensory
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.05.02,Little  Amputation
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.05.04,Little  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.05.01,Little  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.05.03,Little  Sensory
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.03.02,Middle  Amputation
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.03.04,Middle  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.03.01,Middle  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.03.03,Middle  Sensory
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.04.02,Ring  Amputation
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.04.04,Ring  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.04.01,Ring  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.04.03,Ring  Sensory
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.02.02.00,Shoulder  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.02.01.00,Shoulder  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.01.02,Thumb  Amputation
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.01.04,Thumb  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.01.01,Thumb  Range of Motion
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.06.01.03,Thumb  Sensory
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.04.02.00,Wrist  Other
+16,"Upper Extremities, Arm, Shoulder, Elbow, Wrist,Hand/Multiple Fingers, Thumb, index, middle, ring, little",16.04.01.00,Wrist  Range of Motion
+7,Urinary & Reproductive Systems,07.03.00.00,Bladder
+7,Urinary & Reproductive Systems,07.05.00.00,Reproductive System
+7,Urinary & Reproductive Systems,07.01.00.00,Upper Urinary Tract
+7,Urinary & Reproductive Systems,07.04.00.00,Urethra
+7,Urinary & Reproductive Systems,07.02.00.00,Urinary Diversion
+12,Visual System,12.01.00.00,Visual Acuity
+12,Visual System,12.02.00.00,Visual Field
+12,Visual System,12.03.00.00,Visual System
