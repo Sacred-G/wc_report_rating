@@ -1,6 +1,6 @@
 from datetime import datetime
 
-def calculate_rating(supabase, occupation, bodypart, age_injury, wpi, adjusted_value):
+def calculate_rating(supabase, occupation, bodypart, age_injury, wpi, pain=0):
     """
     Calculate workers compensation rating using Supabase tables.
     
@@ -10,7 +10,7 @@ def calculate_rating(supabase, occupation, bodypart, age_injury, wpi, adjusted_v
         bodypart: Body part affected
         age_injury: Date of injury
         wpi: Whole person impairment value
-        adjusted_value: Pre-adjusted WPI value
+        pain: Pain add-on value (default 0)
     """
     try:
         # 1. Get group number from occupation
@@ -37,14 +37,19 @@ def calculate_rating(supabase, occupation, bodypart, age_injury, wpi, adjusted_v
         impairment_code = variants_response.data[0]['vari_impairment_code']
         variant = variants_response.data[0]['vari_variant']
 
-        # 3. Get adjustment value from occupational_adjustment
+        # Calculate adjusted value
+        base_value = wpi + pain
+        adjusted_value = round(base_value * 1.4, 1)
+
+        # 3. Get occupational adjustment value using adjusted value and variant
         adjustment_response = supabase.table('workers_comp.occupational_adjustment') \
             .select('adjustment_value') \
             .eq('adjocc_rating', adjusted_value) \
+            .eq('adjocc_variant', variant) \
             .execute()
             
         if not adjustment_response.data:
-            raise ValueError(f"No adjustment value found for rating: {adjusted_value}")
+            raise ValueError(f"No adjustment value found for rating: {adjusted_value} and variant: {variant}")
             
         adjustment_value = adjustment_response.data[0]['adjustment_value']
 
@@ -88,7 +93,9 @@ def calculate_rating(supabase, occupation, bodypart, age_injury, wpi, adjusted_v
                 'bodypart': bodypart,
                 'age_injury': age_injury,
                 'wpi': wpi,
-                'occadjusted_value': adjusted_value,
+                'occadjusted_value': adjusted_value, 
+                'base_wpi': wpi,
+                'pain_addon': pain,
                 'fina_result_value': final_value
             }) \
             .execute()

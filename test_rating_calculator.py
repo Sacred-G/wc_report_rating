@@ -13,7 +13,7 @@ class TestRatingCalculator(unittest.TestCase):
         self.test_bodypart = "Lower Back"
         self.test_age_injury = "2023-01-01"
         self.test_wpi = 25
-        self.test_adjusted_value = 30
+        self.test_pain = 3
 
     def test_successful_calculation(self):
         # Setup mock chain for occupation query
@@ -40,8 +40,10 @@ class TestRatingCalculator(unittest.TestCase):
         # Setup mock chain for adjustment query
         mock_adjustment_chain = Mock()
         mock_adjustment_chain.execute.return_value = Mock(data=[{'adjustment_value': 1.4}])
+        mock_adjustment_variant = Mock()
+        mock_adjustment_variant.eq.return_value = mock_adjustment_chain
         mock_adjustment_select = Mock()
-        mock_adjustment_select.eq.return_value = mock_adjustment_chain
+        mock_adjustment_select.eq.return_value = mock_adjustment_variant
         mock_adjustment_table = Mock()
         mock_adjustment_table.select.return_value = mock_adjustment_select
         
@@ -74,7 +76,7 @@ class TestRatingCalculator(unittest.TestCase):
             self.test_bodypart,
             self.test_age_injury,
             self.test_wpi,
-            self.test_adjusted_value
+            self.test_pain
         )
 
         self.assertEqual(result['status'], 'success')
@@ -82,6 +84,7 @@ class TestRatingCalculator(unittest.TestCase):
         self.assertEqual(result['details']['group_number'], 110)
         self.assertEqual(result['details']['impairment_code'], 'TEST123')
         self.assertEqual(result['details']['variant'], 'A')
+        # Base value (25 + 3) * 1.4 = 39.2
         self.assertEqual(result['details']['adjustment_value'], 1.4)
         self.assertEqual(result['details']['wpi_range'], '22_to_26')
 
@@ -101,8 +104,7 @@ class TestRatingCalculator(unittest.TestCase):
             self.test_occupation,
             self.test_bodypart,
             self.test_age_injury,
-            self.test_wpi,
-            self.test_adjusted_value
+            self.test_wpi
         )
 
         self.assertEqual(result['status'], 'error')
@@ -146,8 +148,10 @@ class TestRatingCalculator(unittest.TestCase):
             
             mock_adjustment_chain = Mock()
             mock_adjustment_chain.execute.return_value = Mock(data=[{'adjustment_value': 1.4}])
+            mock_adjustment_variant = Mock()
+            mock_adjustment_variant.eq.return_value = mock_adjustment_chain
             mock_adjustment_select = Mock()
-            mock_adjustment_select.eq.return_value = mock_adjustment_chain
+            mock_adjustment_select.eq.return_value = mock_adjustment_variant
             mock_adjustment_table = Mock()
             mock_adjustment_table.select.return_value = mock_adjustment_select
             
@@ -177,11 +181,77 @@ class TestRatingCalculator(unittest.TestCase):
                 self.test_bodypart,
                 self.test_age_injury,
                 wpi,
-                self.test_adjusted_value
+                self.test_pain
             )
 
             self.assertEqual(result['status'], 'success')
             self.assertEqual(result['details']['wpi_range'], expected_range)
+
+    def test_pain_calculation(self):
+        # Setup mock chains
+        mock_occupation_chain = Mock()
+        mock_occupation_chain.execute.return_value = Mock(data=[{'occ_group_number': 110}])
+        mock_occupation_select = Mock()
+        mock_occupation_select.eq.return_value = mock_occupation_chain
+        mock_occupation_table = Mock()
+        mock_occupation_table.select.return_value = mock_occupation_select
+        
+        mock_variants_chain = Mock()
+        mock_variants_chain.execute.return_value = Mock(data=[{
+            'vari_impairment_code': 'TEST123',
+            'vari_variant': 'A'
+        }])
+        mock_variants_select = Mock()
+        mock_variants_select.eq.return_value = mock_variants_chain
+        mock_variants_eq = Mock()
+        mock_variants_eq.eq.return_value = mock_variants_select
+        mock_variants_table = Mock()
+        mock_variants_table.select.return_value = mock_variants_eq
+        
+        # Test with WPI 10 and pain 3
+        # Base value should be 13 (10 + 3)
+        # Adjusted value should be 18.2 (13 * 1.4)
+        mock_adjustment_chain = Mock()
+        mock_adjustment_chain.execute.return_value = Mock(data=[{'adjustment_value': 1.2}])
+        mock_adjustment_variant = Mock()
+        mock_adjustment_variant.eq.return_value = mock_adjustment_chain
+        mock_adjustment_select = Mock()
+        mock_adjustment_select.eq.return_value = mock_adjustment_variant
+        mock_adjustment_table = Mock()
+        mock_adjustment_table.select.return_value = mock_adjustment_select
+        
+        mock_age_chain = Mock()
+        mock_age_chain.execute.return_value = Mock(data=[{'21_and_under': 25.0}])
+        mock_age_select = Mock()
+        mock_age_select.eq.return_value = mock_age_chain
+        mock_age_table = Mock()
+        mock_age_table.select.return_value = mock_age_select
+        
+        mock_insert_chain = Mock()
+        mock_insert_chain.execute.return_value = Mock(data=[{}])
+        mock_insert_table = Mock()
+        mock_insert_table.insert.return_value = mock_insert_chain
+        
+        self.mock_supabase.table.side_effect = [
+            mock_occupation_table,
+            mock_variants_table,
+            mock_adjustment_table,
+            mock_age_table,
+            mock_insert_table
+        ]
+
+        result = calculate_rating(
+            self.mock_supabase,
+            self.test_occupation,
+            self.test_bodypart,
+            self.test_age_injury,
+            10,  # WPI
+            3    # Pain
+        )
+
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(result['details']['wpi_range'], '21_and_under')
+        self.assertEqual(result['details']['adjustment_value'], 1.2)
 
     def test_database_error(self):
         # Setup mock chain for database error
@@ -199,8 +269,7 @@ class TestRatingCalculator(unittest.TestCase):
             self.test_occupation,
             self.test_bodypart,
             self.test_age_injury,
-            self.test_wpi,
-            self.test_adjusted_value
+            self.test_wpi
         )
 
         self.assertEqual(result['status'], 'error')
