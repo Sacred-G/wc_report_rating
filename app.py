@@ -162,8 +162,21 @@ def get_assistant_instructions(mode="default"):
         - Patient age
         - Occupation
         - Body parts injured (including dental/mastication)
-        - WPI ratings
-        - Pain add-on percentage
+        - WPI ratings (including dental/mastification)
+        - Pain add-on percentage (CRITICAL: Look for any mention of pain add-on up to 3% maximum)
+        
+    CRITICAL: Pain Add-on Instructions
+        - Search the ENTIRE report for any mention of pain add-on percentages
+        - Pain add-on is capped at 3% maximum
+        - Look for terms like:
+            * "pain add"
+            * "pain addition"
+            * "pain factor"
+            * "for pain"
+        - Common locations:
+            * Near WPI ratings
+            * In pain discussion sections
+            * In final summary sections
 
     CRITICAL: Dental/Mastication Ratings
         - You MUST search the ENTIRE report for dental/mastication ratings
@@ -246,34 +259,130 @@ def get_assistant_instructions(mode="default"):
     if mode == "detailed":
         return base_instructions + """
     Additionally, provide a detailed analysis including:
-    - Patient's medical history relevant to the injury
-    - Detailed description of the injury mechanism
-    - Treatment history and current status
-    - Work restrictions and limitations
-    - Future medical needs
-    - Apportionment considerations
-    - Any other relevant medical findings
-    
-    Return a JSON object with these fields:
     {
-        "age": int,
-        "occupation": string,
-        "impairments": [
-            {
-                "body_part": string,
-                "wpi": float
-            }
-        ],
-        "pain_addon": float (optional),
-        "detailed_summary": {
-            "medical_history": string,
-            "injury_mechanism": string,
-            "treatment_history": string,
-            "work_restrictions": string,
-            "future_medical": string,
-            "apportionment": string,
-            "additional_findings": string
-        }
+  "analysisFramework": {
+    "I_PatientIdentificationAndContext": {
+      "required_elements": [
+        "patient_demographics",
+        "legal_claim_details",
+        "medical_claim_details",
+        "claim_number",
+        "incident_date",
+        "insurance_information"
+      ]
+    },
+    "II_InjuryAssessment": {
+      "injury_characteristics": {
+        "required_elements": [
+          "injury_type_and_classification",
+          "affected_body_parts",
+          "injury_mechanism",
+          "chronological_progression"
+        ]
+      },
+      "impairment_evaluation": {
+        "required_elements": [
+          "whole_person_impairment_percentages",
+          "impairment_by_body_part",
+          "comparative_rating_analysis",
+          "substantiating_medical_evidence"
+        ]
+      }
+    },
+    "III_MedicalDiagnostics": {
+      "diagnostic_review": {
+        "required_elements": [
+          "diagnosed_conditions",
+          "icd10_codes",
+          "diagnostic_criteria",
+          "symptom_correlation"
+        ]
+      },
+      "treatment_history": {
+        "required_elements": [
+          "treatment_timeline",
+          "interventions_attempted",
+          "medical_procedures",
+          "rehabilitation_efforts",
+          "treatment_efficacy"
+        ]
+      }
+    },
+    "IV_ApportionmentAnalysis": {
+      "required_elements": [
+        "apportionment_percentages",
+        "apportionment_reasoning",
+        "pre_existing_conditions_source",
+        "comparative_impact",
+        "medical_rationale"
+      ]
+    },
+    "V_FunctionalCapacity": {
+      "work_limitations": {
+        "required_elements": [
+          "work_restrictions",
+          "capacity_evaluation_results",
+          "employability_impact",
+          "vocational_rehabilitation_potential"
+        ]
+      },
+      "adl_impact": {
+        "required_elements": [
+          "personal_activity_limitations",
+          "professional_activity_limitations",
+          "functional_deficits",
+          "long_term_prognosis"
+        ]
+      }
+    },
+    "VI_FutureMedicalConsiderations": {
+      "required_elements": [
+        "projected_treatments",
+        "future_care_duration",
+        "anticipated_interventions",
+        "rehabilitation_needs",
+        "cost_estimates"
+      ]
+    },
+    "VII_CriticalAnalysis": {
+      "unique_insights": {
+        "required_elements": [
+          "unusual_medical_findings",
+          "complex_injury_interactions",
+          "legal_implications",
+          "medical_anomalies"
+        ]
+      },
+      "recommendations": {
+        "required_elements": [
+          "medical_recommendations",
+          "vocational_recommendations",
+          "dispute_resolution_strategies",
+          "areas_needing_investigation"
+        ]
+      }
+    },
+    "output_requirements": {
+      "formatting": [
+        "professional_medical_legal_terminology",
+        "precise_quantifiable_information",
+        "specific_section_citations",
+        "objective_factual_reporting"
+      ],
+      "deliverable_characteristics": [
+        "comprehensive_information_capture",
+        "quick_understanding_enablement",
+        "decision_making_support",
+        "actionable_insights"
+      ],
+      "quality_controls": [
+        "complete_accuracy",
+        "cross_referenced_information",
+        "explicit_limitation_statements"
+      ]
+    }
+  }
+}
     }"""
     
     return base_instructions + """
@@ -284,10 +393,10 @@ def get_assistant_instructions(mode="default"):
         "impairments": [
             {
                 "body_part": string,
-                "wpi": float
+                "wpi": float,
+                "pain_addon": float  # Pain add-on percentage for this specific impairment (max 3%)
             }
-        ],
-        "pain_addon": float (optional)
+        ]
     }
     
     IMPORTANT: 
@@ -410,7 +519,6 @@ def process_extracted_data(data):
         age = data["age"]
         occupation = data["occupation"]
         impairments = data["impairments"]
-        pain_addon = data.get("pain_addon", 0.0)
 
         # Get occupation group
         group_number = get_occupation_group(occupation)
@@ -422,6 +530,8 @@ def process_extracted_data(data):
         for imp in impairments:
             body_part = imp["body_part"]
             original_wpi = float(imp["wpi"])
+            # Get pain add-on for this specific impairment (max 3%)
+            pain_addon = min(imp.get("pain_addon", 0.0), 3.0)
 
             # Map body part to impairment code
             impairment_code = map_body_part_to_code(body_part)
@@ -430,9 +540,9 @@ def process_extracted_data(data):
             variant_info = get_variant_for_impairment(group_number, impairment_code)
             variant_label = variant_info.get("variant_label", "variant1")
 
-            # Calculate base WPI with pain add-on and 1.4 multiplier
+            # Add pain add-on to base WPI before 1.4 multiplier
             base_wpi = original_wpi + pain_addon
-            adjusted_wpi = base_wpi * 1.4
+            adjusted_wpi = base_wpi * 1.4  # Apply 1.4 multiplier after adding pain
             
             # Get occupational adjustment using the adjusted WPI and variant
             occupant_adjusted_wpi = get_occupational_adjusted_wpi(group_number, variant_label, adjusted_wpi)
@@ -774,39 +884,103 @@ def main():
                     )
                     st.success("Processing Complete!")
 
-                    # Display each impairment with detailed calculation steps
                     details = result['calculation_details']
                     
-                    # Group impairments by body region for proper combination order
+                    # Create two columns for display
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("### NO APPORTIONMENT     100%")
+                        for detail in details:
+                            st.text(f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
+                                  f"{round(detail['adjusted_wpi'])} - {detail['group_number']}{detail['variant'].upper()} - "
+                                  f"{round(detail['occupant_adjusted_wpi'])} - {round(detail['age_adjusted_wpi'])}%) "
+                                  f"{round(detail['age_adjusted_wpi'])}%")
+                            st.text(f"{detail['body_part']}")
+                            st.text("")
+                            
+                        # Calculate and display combinations
+                        ratings = [str(round(d['age_adjusted_wpi'])) for d in details]
+                        st.text(f"{' C '.join(ratings)} = {round(result['final_pd_percent'])}%")
+                        st.text(f"Combined Rating{round(result['final_pd_percent'])}%")
+                        st.text(f"Total of All Add-ons for Pain 2%")
+                        st.text(f"Total Weeks of PD{round(result['weeks'], 2)}")
+                        st.text(f"Age on DOI {result.get('age', 'N/A')}")
+                        st.text(f"Average Weekly Earnings${result.get('weekly_earnings', '435.00')} (PD Statutory Max)")
+                        st.text(f"PD Weekly Rate:${result.get('weekly_rate', '290.00')}")
+                        st.text(f"Total PD Payout${round(result['total_pd_dollars'], 2)}")
+                        st.text("Return to Work Adjustments")
+                        st.text("")
+                        st.text("No RTW Adjustments for injuries on/after 1/1/2013.")
+                        st.text(f"Average Weekly Earnings ${result.get('life_pension_max', '515.38')} (Life Pension Statutory Max)")
+                        st.text(f"Life Pension Weekly Rate ${result.get('life_pension_rate', '85.0')}")
+                        
+                    with col2:
+                        st.markdown("### WITH APPORTIONMENT 90% and 80% CS LS")
+                        # Calculate apportioned values (90%)
+                        for detail in details:
+                            apportioned_wpi = round(detail['age_adjusted_wpi'] * 0.9, 2)
+                            st.text(f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
+                                  f"{round(detail['adjusted_wpi'])} - {detail['group_number']}{detail['variant'].upper()} - "
+                                  f"{round(detail['occupant_adjusted_wpi'])} - {apportioned_wpi}%) "
+                                  f"{apportioned_wpi}%")
+                            st.text(f"{detail['body_part']}")
+                            st.text("")
+                            
+                        # Calculate and display apportioned combinations
+                        apportioned_ratings = [str(round(d['age_adjusted_wpi'] * 0.9)) for d in details]
+                        apportioned_final = round(result['final_pd_percent'] * 0.9, 2)
+                        st.text(f"{' C '.join(apportioned_ratings)} = {apportioned_final}%")
+                        st.text(f"Combined Rating {apportioned_final}%")
+                        st.text(f"Total of All Add-ons for Pain 2%")
+                        st.text(f"Total Weeks of PD{round(result['weeks'] * 0.9, 2)}")
+                        st.text(f"Age on DOI {result.get('age', 'N/A')}")
+                        st.text(f"Average Weekly Earnings${result.get('weekly_earnings', '435.00')} (PD Statutory Max)")
+                        st.text(f"PD Weekly Rate:${result.get('weekly_rate', '290.00')}")
+                        st.text(f"Total PD Payout${round(result['total_pd_dollars'] * 0.9, 2)}")
+                        st.text("Return to Work Adjustments")
+                        st.text("")
+                        st.text("No RTW Adjustments for injuries on/after 1/1/2013.")
+                        st.text(f"Average Weekly Earnings ${result.get('life_pension_max', '515.38')} (Life Pension Statutory Max)")
+                        st.text(f"Life Pension Weekly Rate ${result.get('life_pension_rate', '85.0')}")
+                    
+                    # Add CMS Analysis section below columns
+                    st.text("")
+                    st.text(f"CMS Analysis ${round(result['total_pd_dollars'] * 0.4, 2)}")
+                    st.text(f"I would propose a split between {round(result['final_pd_percent'])}% and {round(result['final_pd_percent'] * 0.9)}%")
+                    st.text("")
+                    
+                    # Add final calculations
+                    cms_amount = round(result['total_pd_dollars'] * 0.4, 2)
+                    lp_amount = round(result['total_pd_dollars'] * 0.2, 2)
+                    total_demand = cms_amount + lp_amount
+                    
+                    st.text(f"CMS     =     ${cms_amount}")
+                    st.text(f"LP      =     ${lp_amount}")
+                    st.text("")
+                    st.text(f"Demand =     ${total_demand}  With a Voucher.")
+                    st.text("(Also may change based on Benefits print out.)")
+                    
+                    # Categorize body parts
                     upper_extremities = []
                     lower_extremities = []
                     spine = []
                     other = []
                     
                     for detail in details:
-                        if "upper extremit" in detail['body_part'].lower():
+                        body_part = detail['body_part'].lower()
+                        if any(term in body_part for term in ['arm', 'hand', 'wrist', 'elbow', 'shoulder', 'finger']):
                             upper_extremities.append(detail)
-                        elif "lower extremit" in detail['body_part'].lower():
+                        elif any(term in body_part for term in ['leg', 'knee', 'ankle', 'foot', 'hip', 'toe']):
                             lower_extremities.append(detail)
-                        elif any(x in detail['body_part'].lower() for x in ["spine", "lumbar", "cervical", "thoracic"]):
+                        elif any(term in body_part for term in ['spine', 'back', 'lumbar', 'thoracic', 'cervical', 'neck']):
                             spine.append(detail)
+                        elif any(term in body_part for term in ['mastication', 'jaw', 'dental', 'teeth', 'tmj', 'temporomandibular']):
+                            other.append(detail)  # Add mastication to other category
+                            st.text(f"Mastication/Dental Rating: {round(detail['age_adjusted_wpi'])}%")  # Display mastication rating
                         else:
                             other.append(detail)
 
-                    if display_mode == "Styled Cards":
-                    
-                        st.markdown(render_impairments_card(details), unsafe_allow_html=True)
-                    else:
-                        # Standard display
-                        for detail in details:
-                            impairment_str = (
-                                f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
-                                f"{round(detail['adjusted_wpi'], 2)} - {detail['group_number']}{detail['variant'].upper()} - "
-                                f"{round(detail['occupant_adjusted_wpi'], 2)} - {round(detail['age_adjusted_wpi'], 2)}%) "
-                                f"{round(detail['age_adjusted_wpi'], 2)}% {detail['body_part']}"
-                            )
-                            st.write(impairment_str)
-                    
                     # Show combination steps
                     if len(details) > 1:
                         if display_mode == "Styled Cards":

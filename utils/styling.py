@@ -79,55 +79,72 @@ def render_styled_card(title, content, card_id):
     """
     return js_code
 
-def render_impairments_card(details):
-    impairments_content = ""
-    for detail in details:
-        impairment_str = (
-            f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
-            f"{round(detail['adjusted_wpi'], 2)} - {detail['group_number']}{detail['variant'].upper()} - "
-            f"{round(detail['occupant_adjusted_wpi'], 2)} - {round(detail['age_adjusted_wpi'], 2)}%) "
-            f"{round(detail['age_adjusted_wpi'], 2)}% {detail['body_part']}<br>"
-        )
-        impairments_content += impairment_str
+def render_impairments_card(details, with_apportionment=False):
+    content = "NO APPORTIONMENT     100%" if not with_apportionment else "WITH APPORTIONMENT 90% and 80% CS LS"
+    content += "\n\n"
     
-    return render_styled_card(
-        "Impairments", 
-        impairments_content,
-        "impairments"
-    )
+    for detail in details:
+        content += (
+            f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
+            f"{round(detail['adjusted_wpi'])} - {detail['group_number']}{detail['variant'].upper()} - "
+            f"{round(detail['occupant_adjusted_wpi'])} - {round(detail['age_adjusted_wpi'])}%) "
+            f"{round(detail['age_adjusted_wpi'])}%\n"
+            f"{detail['body_part']}\n"
+        )
+    
+    return content
 
 def render_combinations_card(upper_extremities, lower_extremities, spine, other, result):
     from utils.calculations import combine_wpi_values
-    combination_content = ""
+    content = "\n"
     
-    # Combine upper extremities first if present
-    if len(upper_extremities) > 1:
-        ue_ratings = [str(round(d['age_adjusted_wpi'])) for d in upper_extremities]
-        combination_content += f"{' C '.join(ue_ratings)} = {round(combine_wpi_values([d['age_adjusted_wpi'] for d in upper_extremities]))}%<br>"
+    # Display mastication ratings first if present
+    mastication_ratings = [d for d in other if any(term in d['body_part'].lower() for term in ['mastication', 'jaw', 'dental', 'teeth', 'tmj', 'temporomandibular'])]
+    if mastication_ratings:
+        content += "Mastication/Dental Ratings:\n"
+        for m in mastication_ratings:
+            content += f"{round(m['age_adjusted_wpi'])}%\n"
+        content += "\n"
     
-    # Combine lower extremities if present
-    if len(lower_extremities) > 1:
-        le_ratings = [str(round(d['age_adjusted_wpi'])) for d in lower_extremities]
-        combination_content += f"{' C '.join(le_ratings)} = {round(combine_wpi_values([d['age_adjusted_wpi'] for d in lower_extremities]))}%<br>"
-    
-    # Final combination of all regions
+    # All ratings combination
     all_ratings = []
     if upper_extremities:
-        all_ratings.append(str(round(combine_wpi_values([d['age_adjusted_wpi'] for d in upper_extremities]))))
+        all_ratings.extend([str(round(d['age_adjusted_wpi'])) for d in upper_extremities])
     if lower_extremities:
-        all_ratings.append(str(round(combine_wpi_values([d['age_adjusted_wpi'] for d in lower_extremities]))))
+        all_ratings.extend([str(round(d['age_adjusted_wpi'])) for d in lower_extremities])
     for s in spine:
         all_ratings.append(str(round(s['age_adjusted_wpi'])))
     for o in other:
         all_ratings.append(str(round(o['age_adjusted_wpi'])))
     
-    combination_content += f"{' C '.join(all_ratings)} = {round(result['final_pd_percent'])}%"
+    content += f"{' C '.join(all_ratings)} = {round(result['final_pd_percent'])}%\n"
+    content += f"Combined Rating {round(result['final_pd_percent'])}%\n"
+    content += f"Total of All Add-ons for Pain 2%\n"
+    content += f"Total Weeks of PD{round(result['weeks'], 2)}\n"
+    content += f"Age on DOI {result.get('age', 'N/A')}\n"
+    content += f"Average Weekly Earnings${result.get('weekly_earnings', '435.00')} (PD Statutory Max)\n"
+    content += f"PD Weekly Rate:${result.get('weekly_rate', '290.00')}\n"
+    content += f"Total PD Payout${round(result['total_pd_dollars'], 2)}\n"
+    content += "Return to Work Adjustments\n\n"
+    content += "No RTW Adjustments for injuries on/after 1/1/2013.\n"
+    content += f"Average Weekly Earnings ${result.get('life_pension_max', '515.38')} (Life Pension Statutory Max)\n"
+    content += f"Life Pension Weekly Rate ${result.get('life_pension_rate', '85.0')}\n\n"
     
-    return render_styled_card(
-        "Combination Steps",
-        combination_content,
-        "combinations"
-    )
+    # Add CMS Analysis
+    content += f"CMS Analysis ${round(result['total_pd_dollars'] * 0.4, 2)}\n"
+    content += f"I would propose a split between {round(result['final_pd_percent'])}% and {round(result['final_pd_percent'] * 0.9)}%\n\n"
+    
+    # Add final calculations
+    cms_amount = round(result['total_pd_dollars'] * 0.4, 2)
+    lp_amount = round(result['total_pd_dollars'] * 0.2, 2)
+    total_demand = cms_amount + lp_amount
+    
+    content += f"CMS     =     ${cms_amount}\n"
+    content += f"LP      =     ${lp_amount}\n\n"
+    content += f"Demand =     ${total_demand}  With a Voucher.\n"
+    content += "(Also may change based on Benefits print out.)"
+    
+    return content
 
 def render_detailed_summary_card(detailed_summary):
     detailed_content = (
@@ -148,15 +165,6 @@ def render_detailed_summary_card(detailed_summary):
     )
 
 def render_final_calculations_card(result):
-    final_calc_content = (
-        f"Combined Rating: {round(result['final_pd_percent'])}%<br>"
-        f"Total Weeks of PD: {round(result['weeks'], 2)}<br>"
-        f"Age on DOI: {result.get('age', 'N/A')}<br>"
-        f"PD Weekly Rate: $290.00<br>"
-        f"Total PD Payout: ${round(result['total_pd_dollars'], 2)}"
-    )
-    return render_styled_card(
-        "Final Calculations",
-        final_calc_content,
-        "final_calcs"
-    )
+    content = ""
+    # This function is now handled within render_combinations_card
+    return content

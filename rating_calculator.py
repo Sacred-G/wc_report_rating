@@ -57,7 +57,7 @@ def calculate_rating(supabase, occupation, bodypart, age_injury, wpi, pain=0):
             raise ValueError(f"No adjustment value found for rating: {adjusted_value} and variant: {variant}")
         
         adjustment_value = adjustment_response.data[0]['adjustment_value']
-        print(f"Adjustment value found: {adjustment_value}, WPI range: {wpi_range}")
+        print(f"Adjustment value found: {adjustment_value}")
         
         # 4. Determine WPI range category
         if wpi < 22:
