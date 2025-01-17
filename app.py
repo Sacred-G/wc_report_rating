@@ -10,6 +10,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 
+
 load_dotenv()
 
 # -------------
@@ -160,19 +161,44 @@ def get_assistant_instructions(mode="default"):
     Extract key information including:
         - Patient age
         - Occupation
-        - Body parts injured
+        - Body parts injured (including dental/mastication)
         - WPI ratings
         - Pain add-on percentage
-    Important Instructions for Dental/MMI:
-        - ALWAYS check the ENTIRE report for dental ratings or MMI, as they may appear in any section
-        - Look for terms like "dental", "teeth", "mastication", "jaw"
+
+    CRITICAL: Dental/Mastication Ratings
+        - You MUST search the ENTIRE report for dental/mastication ratings
+        - These are often NOT in the final review section
+        - Look for ANY mention of:
+            * Dental conditions
+            * Teeth problems
+            * Mastication issues
+            * Jaw impairments
+            * TMJ (temporomandibular joint)
+        - Search for terms like:
+            * "dental"
+            * "teeth"
+            * "mastication"
+            * "jaw"
+            * "TMJ"
+            * "temporomandibular"
+            * "mouth"
+            * "bite"
+            * "chewing"
+        - Check ALL sections of the report, including:
+            * History sections
+            * Physical examination
+            * Diagnostic studies
+            * Treatment records
+            * Specialist consultations
+            * Middle sections
+            * Any dental-specific evaluations
     
-    Search through the entire document carefully for these details. They may appear in different sections.
+    Search through the entire document carefully for these details. They may appear in different sections:
         - The occupation might be listed under employment history or work status
         - Age might be listed in patient demographics or history
-        - WPI ratings are typically found in the final review section at the end of the report
-        - Pain add-ons are often mentioned alongside the impairment ratings or in a separate pain discussion section
-        - Dental ratings are usually in separate dental reports - make sure to check for these, they will not be in the final review with the others. 
+        - Most WPI ratings are in the final review section
+        - Pain add-ons are often mentioned alongside impairment ratings or in a separate pain discussion section
+        - IMPORTANT: Dental/mastication ratings are usually separate from other ratings and may appear anywhere in the report
     
     Use the following as reference for body part    Spine and Nervous System:
         - SPINE-DRE-ROM (15.01--15.03) - For cervical, thoracic, and lumbar spine
@@ -701,8 +727,7 @@ def main():
     st.markdown(get_card_css(), unsafe_allow_html=True)
     
     st.title("PDRS Workers' Comp Rating Assistant")
-    st.write(f"Using Assistant ID: {ASSISTANT_ID}")
-    st.write(f"Using Vector Store: {VECTOR_STORE}")
+    # Remove display of Assistant ID and Vector Store
 
     # Initialize database
     if not os.path.exists(DATABASE_PATH):
@@ -726,6 +751,13 @@ def main():
         manual_age = st.number_input("Age at Time of Injury", min_value=0, max_value=100, value=0)
         manual_occupation = st.text_input("Occupation")
     
+    # Add display mode toggle
+    display_mode = st.radio(
+        "Display Mode",
+        ["Standard", "Styled Cards"],
+        horizontal=True
+    )
+
     if uploaded_file is not None:
         if st.button("Process Report"):
             try:
@@ -741,12 +773,6 @@ def main():
                         "detailed" if mode == "Detailed Summary" else "default"
                     )
                     st.success("Processing Complete!")
-                    # Add display mode toggle
-                    display_mode = st.radio(
-                        "Display Mode",
-                        ["Standard", "Styled Cards"],
-                        horizontal=True
-                    )
 
                     # Display each impairment with detailed calculation steps
                     details = result['calculation_details']
@@ -844,7 +870,6 @@ def main():
                     else:
                         st.write("\n#### Final Calculations")
                         st.write(f"Combined Rating: {round(result['final_pd_percent'])}%")
-                        st.write(f"Total of All Add-ons for Pain: {result.get('pain_addon', 0)}%")
                         st.write(f"Total Weeks of PD: {round(result['weeks'], 2)}")
                         st.write(f"Age on DOI: {result.get('age', 'N/A')}")
                         st.write(f"PD Weekly Rate: $290.00")

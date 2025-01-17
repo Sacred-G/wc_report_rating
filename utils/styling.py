@@ -4,10 +4,11 @@ def get_card_css():
     return """
     <style>
     .card {
-        background: white;
+        background: #f0f0f0; /* Light gray background for better contrast */
         border-radius: 8px;
         padding: 20px;
         margin: 10px 0;
+
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .card h3 {
@@ -20,6 +21,7 @@ def get_card_css():
     }
     .card-content {
         margin: 10px 0;
+     
     }
     .button-row {
         display: flex;
@@ -148,7 +150,6 @@ def render_detailed_summary_card(detailed_summary):
 def render_final_calculations_card(result):
     final_calc_content = (
         f"Combined Rating: {round(result['final_pd_percent'])}%<br>"
-        f"Total of All Add-ons for Pain: {result.get('pain_addon', 0)}%<br>"
         f"Total Weeks of PD: {round(result['weeks'], 2)}<br>"
         f"Age on DOI: {result.get('age', 'N/A')}<br>"
         f"PD Weekly Rate: $290.00<br>"
