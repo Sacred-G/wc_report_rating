@@ -1,0 +1,53 @@
+[database]
+sqlite_path = "data/local.db"
+
+[database.supabase]
+url = ""  # Set via SUPABASE_URL env var
+key = ""  # Set via SUPABASE_KEY env var
+anon_key = ""  # Set via SUPABASE_ANON_KEY env var
+
+[database.postgres]
+user = ""  # Set via DB_USER env var
+password = ""  # Set via DB_PASSWORD env var
+host = ""  # Set via DB_HOST env var
+port = 6543  # Set via DB_PORT env var
+name = "postgres"  # Set via DB_NAME env var
+
+[openai]
+api_key = ""  # Set via OPENAI_API_KEY env var
+model = "gpt-4o-mini"
+assistant_id = ""  # Set via ASSISTANT_ID env var
+vector_store = ""  # Set via VECTOR_STORE env var
+
+[auth]
+username = "demo"
+password = "anthony123"
+
+[application]
+name = "WC Rating Calculator"
+debug = false
+environment = "production"  # Can be "development", "testing", or "production"
+
+[paths]
+data_dir = "data"
+sql_dir = "data/sql"
+csv_files = [
+    "age_adjustment_rows.csv",
+    "occupational_adjustments_rows.csv",
+    "occupations_rows.csv",
+    "variants.csv"
+]
+
+[logging]
+level = "INFO"
+file = "app.log"
+format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+[features]
+enable_chat = true
+enable_history = true
+enable_settings = true
+
+[security]
+allowed_file_types = [".pdf", ".docx", ".txt"]
+max_file_size = 10485760  # 10MB in bytes

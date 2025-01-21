@@ -1,9 +1,8 @@
-
 streamlit
 openai
-python-dotenv
 supabase
 PyPDF2
 pandas
 numpy
 psycopg2-binary
+tomli>=2.0.0

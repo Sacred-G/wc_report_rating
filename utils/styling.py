@@ -21,7 +21,15 @@ def get_card_css():
     }
     .card-content {
         margin: 10px 0;
-     
+        white-space: pre-wrap;
+        font-family: monospace;
+    }
+    .mastication-rating {
+        color: #2c3e50;
+        font-weight: bold;
+        margin: 5px 0;
+        padding: 5px;
+        border-left: 3px solid #1f77b4;
     }
     .button-row {
         display: flex;
@@ -80,71 +88,82 @@ def render_styled_card(title, content, card_id):
     return js_code
 
 def render_impairments_card(details, with_apportionment=False):
-    content = "NO APPORTIONMENT     100%" if not with_apportionment else "WITH APPORTIONMENT 90% and 80% CS LS"
-    content += "\n\n"
+    content = []
+    content.append("NO APPORTIONMENT     100%" if not with_apportionment else "WITH APPORTIONMENT 90% and 80% CS LS")
+    content.append("")
     
     for detail in details:
-        content += (
-            f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
-            f"{round(detail['adjusted_wpi'])} - {detail['group_number']}{detail['variant'].upper()} - "
-            f"{round(detail['occupant_adjusted_wpi'])} - {round(detail['age_adjusted_wpi'])}%) "
-            f"{round(detail['age_adjusted_wpi'])}%\n"
-            f"{detail['body_part']}\n"
-        )
+        content.append(detail['body_part'])
+        content.append(detail['formatted_string'])
+        content.append("")  # Add blank line between impairments
     
-    return content
+    return "\n".join(content)
 
 def render_combinations_card(upper_extremities, lower_extremities, spine, other, result):
     from utils.calculations import combine_wpi_values
-    content = "\n"
+    content = []
+    
+    # Get the appropriate result section (no_apportionment or with_apportionment)
+    rating_section = result.get('no_apportionment', {}) if 'no_apportionment' in result else result
     
     # Display mastication ratings first if present
     mastication_ratings = [d for d in other if any(term in d['body_part'].lower() for term in ['mastication', 'jaw', 'dental', 'teeth', 'tmj', 'temporomandibular'])]
     if mastication_ratings:
-        content += "Mastication/Dental Ratings:\n"
+        content.append("<div class='mastication-rating'>")
+        content.append("Mastication/Dental Ratings:")
         for m in mastication_ratings:
-            content += f"{round(m['age_adjusted_wpi'])}%\n"
-        content += "\n"
+            content.append(f"• {m['body_part']}: {round(m['wpi'])}%")
+        content.append("</div>")
+        content.append("")
     
     # All ratings combination
     all_ratings = []
     if upper_extremities:
-        all_ratings.extend([str(round(d['age_adjusted_wpi'])) for d in upper_extremities])
+        all_ratings.extend([str(round(d['wpi'])) for d in upper_extremities])
     if lower_extremities:
-        all_ratings.extend([str(round(d['age_adjusted_wpi'])) for d in lower_extremities])
+        all_ratings.extend([str(round(d['wpi'])) for d in lower_extremities])
     for s in spine:
-        all_ratings.append(str(round(s['age_adjusted_wpi'])))
+        all_ratings.append(str(round(s['wpi'])))
     for o in other:
-        all_ratings.append(str(round(o['age_adjusted_wpi'])))
+        all_ratings.append(str(round(o['wpi'])))
     
-    content += f"{' C '.join(all_ratings)} = {round(result['final_pd_percent'])}%\n"
-    content += f"Combined Rating {round(result['final_pd_percent'])}%\n"
-    content += f"Total of All Add-ons for Pain 2%\n"
-    content += f"Total Weeks of PD{round(result['weeks'], 2)}\n"
-    content += f"Age on DOI {result.get('age', 'N/A')}\n"
-    content += f"Average Weekly Earnings${result.get('weekly_earnings', '435.00')} (PD Statutory Max)\n"
-    content += f"PD Weekly Rate:${result.get('weekly_rate', '290.00')}\n"
-    content += f"Total PD Payout${round(result['total_pd_dollars'], 2)}\n"
-    content += "Return to Work Adjustments\n\n"
-    content += "No RTW Adjustments for injuries on/after 1/1/2013.\n"
-    content += f"Average Weekly Earnings ${result.get('life_pension_max', '515.38')} (Life Pension Statutory Max)\n"
-    content += f"Life Pension Weekly Rate ${result.get('life_pension_rate', '85.0')}\n\n"
+    content.append(f"{' C '.join(all_ratings)} = {round(rating_section.get('final_pd_percent', 0))}%")
+    content.append("")
+    content.append(f"Combined Rating {round(rating_section.get('final_pd_percent', 0))}%")
+    content.append(f"Total of All Add-ons for Pain 2%")
+    content.append(f"Total Weeks of PD {round(rating_section.get('weeks', 0), 2)}")
+    content.append(f"Age on DOI {result.get('age', 'N/A')}")
+    content.append(f"Average Weekly Earnings ${rating_section.get('pd_weekly_rate', '435.00')} (PD Statutory Max)")
+    content.append(f"PD Weekly Rate: ${rating_section.get('pd_weekly_rate', '290.00')}")
+    content.append(f"Total PD Payout ${round(rating_section.get('total_pd_dollars', 0), 2)}")
     
-    # Add CMS Analysis
-    content += f"CMS Analysis ${round(result['total_pd_dollars'] * 0.4, 2)}\n"
-    content += f"I would propose a split between {round(result['final_pd_percent'])}% and {round(result['final_pd_percent'] * 0.9)}%\n\n"
+    # Add life pension info if available
+    if rating_section.get('life_pension_weekly_rate'):
+        content.append("")
+        content.append("Return to Work Adjustments")
+        content.append("")
+        content.append("No RTW Adjustments for injuries on/after 1/1/2013.")
+        content.append(f"Average Weekly Earnings ${rating_section.get('life_pension_max_earnings', '515.38')} (Life Pension Statutory Max)")
+        content.append(f"Life Pension Weekly Rate ${rating_section.get('life_pension_weekly_rate', '85.0')}")
+        content.append("")
     
-    # Add final calculations
-    cms_amount = round(result['total_pd_dollars'] * 0.4, 2)
-    lp_amount = round(result['total_pd_dollars'] * 0.2, 2)
-    total_demand = cms_amount + lp_amount
+    # Add CMS Analysis if this is the no_apportionment section
+    if 'no_apportionment' in result:
+        total_pd = rating_section.get('total_pd_dollars', 0)
+        cms_amount = round(total_pd * 0.4, 2)
+        lp_amount = round(total_pd * 0.2, 2)
+        total_demand = cms_amount + lp_amount
+        
+        content.append(f"CMS Analysis ${cms_amount}")
+        content.append(f"I would propose a split between {round(rating_section.get('final_pd_percent', 0))}% and {round(rating_section.get('final_pd_percent', 0) * 0.9)}%")
+        content.append("")
+        content.append(f"CMS     =     ${cms_amount}")
+        content.append(f"LP      =     ${lp_amount}")
+        content.append("")
+        content.append(f"Demand =     ${total_demand}  With a Voucher.")
+        content.append("(Also may change based on Benefits print out.)")
     
-    content += f"CMS     =     ${cms_amount}\n"
-    content += f"LP      =     ${lp_amount}\n\n"
-    content += f"Demand =     ${total_demand}  With a Voucher.\n"
-    content += "(Also may change based on Benefits print out.)"
-    
-    return content
+    return "\n".join(content)
 
 def render_detailed_summary_card(detailed_summary):
     detailed_content = (
@@ -165,6 +184,26 @@ def render_detailed_summary_card(detailed_summary):
     )
 
 def render_final_calculations_card(result):
-    content = ""
-    # This function is now handled within render_combinations_card
-    return content
+    rating_section = result.get('no_apportionment', {})
+    content = f"Combined Rating: {round(rating_section.get('final_pd_percent', 0))}%\n"
+    content += f"Total Weeks of PD: {round(rating_section.get('weeks', 0), 2)}\n"
+    content += f"Age on DOI: {result.get('age', 'N/A')}\n"
+    content += f"PD Weekly Rate: ${rating_section.get('pd_weekly_rate', 290.00)}\n"
+    content += f"Total PD Payout: ${round(rating_section.get('total_pd_dollars', 0), 2)}\n"
+    
+    # Add mastication ratings if present
+    mastication_ratings = [d for d in rating_section.get('formatted_impairments', [])
+                         if any(term in d['body_part'].lower() 
+                               for term in ['mastication', 'jaw', 'dental', 'teeth', 'tmj', 'temporomandibular'])]
+    if mastication_ratings:
+        content += "\n<div class='mastication-rating'>\n"
+        content += "Mastication/Dental Ratings:\n"
+        for m in mastication_ratings:
+            content += f"• {m['body_part']}: {round(m['wpi'])}%\n"
+        content += "</div>"
+    
+    return render_styled_card(
+        "Final Calculations",
+        content,
+        "final_calcs"
+    )

@@ -1,0 +1,6 @@
+[server]
+enableCORS = false
+
+[browser]
+gatherUsageStats = false
+serverAddress = "localhost"

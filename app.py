@@ -1,1053 +1,114 @@
 import os
-import time
-import math
-import re
-import json
-import csv
-from typing import Dict, List, Any
-import sqlite3
 import streamlit as st
-from dotenv import load_dotenv
-from openai import OpenAI
-
-
-load_dotenv()
-
-# -------------
-# ENV VARS
-# -------------
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-DATABASE_PATH = os.getenv("DATABASE_PATH", "data/local.db")
-ASSISTANT_ID = os.getenv("ASSISTANT_ID")
-VECTOR_STORE = os.getenv("VECTOR_STORE")
-
-if not OPENAI_API_KEY:
-    raise EnvironmentError("Please set OPENAI_API_KEY in your .env file.")
-
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-def init_database():
-    """Initialize SQLite database with tables and import data from CSV files"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    # Create tables
-    cursor.executescript("""
-        CREATE TABLE IF NOT EXISTS occupational_adjustments (
-            id INTEGER PRIMARY KEY,
-            rating_percent REAL,
-            c REAL,
-            d REAL,
-            e REAL,
-            f REAL,
-            g REAL,
-            h REAL,
-            i REAL,
-            j REAL
-        );
-
-        CREATE TABLE IF NOT EXISTS occupations (
-            id INTEGER PRIMARY KEY,
-            group_number INTEGER,
-            occupation_title TEXT,
-            industry TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS variants (
-            id INTEGER PRIMARY KEY,
-            body_part TEXT,
-            impairment_code TEXT,
-            group_110 TEXT,
-            group_111 TEXT,
-            group_112 TEXT,
-            group_120 TEXT,
-            group_210 TEXT,
-            group_211 TEXT,
-            group_212 TEXT,
-            group_213 TEXT,
-            group_214 TEXT,
-            group_220 TEXT,
-            group_221 TEXT,
-            group_230 TEXT,
-            group_240 TEXT,
-            group_250 TEXT,
-            group_251 TEXT,
-            group_290 TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS variants_2 (
-            id INTEGER PRIMARY KEY,
-            body_part TEXT,
-            impairment_code TEXT,
-            group_310 TEXT,
-            group_311 TEXT,
-            group_320 TEXT,
-            group_321 TEXT,
-            group_322 TEXT,
-            group_330 TEXT,
-            group_331 TEXT,
-            group_332 TEXT,
-            group_340 TEXT,
-            group_341 TEXT,
-            group_350 TEXT,
-            group_351 TEXT,
-            group_360 TEXT,
-            group_370 TEXT,
-            group_380 TEXT,
-            group_390 TEXT,
-            group_420 TEXT,
-            group_430 TEXT,
-            group_460 TEXT,
-            group_470 TEXT,
-            group_480 TEXT,
-            group_481 TEXT,
-            group_482 TEXT,
-            group_490 TEXT,
-            group_491 TEXT,
-            group_492 TEXT,
-            group_493 TEXT,
-            group_560 TEXT,
-            group_590 TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS age_adjustment (
-            id INTEGER PRIMARY KEY,
-            wpi_percent REAL,
-            "21_and_under" REAL,
-            "22_to_26" REAL,
-            "27_to_31" REAL,
-            "32_to_36" REAL,
-            "37_to_41" REAL,
-            "42_to_46" REAL,
-            "47_to_51" REAL,
-            "52_to_56" REAL,
-            "57_to_61" REAL,
-            "62_and_over" REAL
-        );
-    """)
-
-    # Import data from CSV files if tables are empty
-    def import_csv(table_name, csv_path):
-        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-        if cursor.fetchone()[0] == 0:  # Only import if table is empty
-            with open(csv_path, 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    placeholders = ','.join(['?' for _ in row])
-                    columns = ','.join(row.keys())
-                    cursor.execute(
-                        f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})",
-                        list(row.values())
-                    )
-
-    # Import data from CSV files
-    csv_files = {
-        'occupational_adjustments': 'data/sql/occupational_adjustments_rows.csv',
-        'occupations': 'data/sql/occupations_rows.csv',
-        'variants': 'data/sql/variants_rows.csv',
-        'variants_2': 'data/sql/variants_2_rows.csv',
-        'age_adjustment': 'data/sql/age_adjustment_rows.csv'
-    }
-
-    for table, csv_path in csv_files.items():
-        if os.path.exists(csv_path):
-            import_csv(table, csv_path)
-
-    conn.commit()
-    conn.close()
-
-def get_assistant_instructions(mode="default"):
-    base_instructions = """You are a medical report analyzer for workers' compensation cases.
-    Extract key information including:
-        - Patient age
-        - Occupation
-        - Body parts injured (including dental/mastication)
-        - WPI ratings (including dental/mastification)
-        - Pain add-on percentage (CRITICAL: Look for any mention of pain add-on up to 3% maximum)
-        
-    CRITICAL: Pain Add-on Instructions
-        - Search the ENTIRE report for any mention of pain add-on percentages
-        - Pain add-on is capped at 3% maximum
-        - Look for terms like:
-            * "pain add"
-            * "pain addition"
-            * "pain factor"
-            * "for pain"
-        - Common locations:
-            * Near WPI ratings
-            * In pain discussion sections
-            * In final summary sections
-
-    CRITICAL: Dental/Mastication Ratings
-        - You MUST search the ENTIRE report for dental/mastication ratings
-        - These are often NOT in the final review section
-        - Look for ANY mention of:
-            * Dental conditions
-            * Teeth problems
-            * Mastication issues
-            * Jaw impairments
-            * TMJ (temporomandibular joint)
-        - Search for terms like:
-            * "dental"
-            * "teeth"
-            * "mastication"
-            * "jaw"
-            * "TMJ"
-            * "temporomandibular"
-            * "mouth"
-            * "bite"
-            * "chewing"
-        - Check ALL sections of the report, including:
-            * History sections
-            * Physical examination
-            * Diagnostic studies
-            * Treatment records
-            * Specialist consultations
-            * Middle sections
-            * Any dental-specific evaluations
-    
-    Search through the entire document carefully for these details. They may appear in different sections:
-        - The occupation might be listed under employment history or work status
-        - Age might be listed in patient demographics or history
-        - Most WPI ratings are in the final review section
-        - Pain add-ons are often mentioned alongside impairment ratings or in a separate pain discussion section
-        - IMPORTANT: Dental/mastication ratings are usually separate from other ratings and may appear anywhere in the report
-    
-    Use the following as reference for body part    Spine and Nervous System:
-        - SPINE-DRE-ROM (15.01--15.03) - For cervical, thoracic, and lumbar spine
-        - PERIPH-SPINE (13.12.01.XX) - For peripheral spine conditions
-        - PERIPH-UE (13.12.02.XX) - For peripheral upper extremity
-        - PERIPH-LE (13.12.03.XX) - For peripheral lower extremity
-        
-    Upper Extremities:
-        - PERIPH - UE (04.03.01.00) - For peripheral vascular upper extremity
-        - ARM-AMPUT (16.01.01.XX) - For arm amputation
-        - ARM-GRIP/PINCH (16.01.04.00) - For grip and pinch strength
-        - HAND (16.05.XX.XX) - For hand conditions
-        - SHOULDER-ROM (16.02.01.00) - For shoulder range of motion
-        - ELBOW-ROM (16.03.01.00) - For elbow range of motion
-        - WRIST-ROM (16.04.01.00) - For wrist range of motion
-        
-    Lower Extremities:
-        - PERIPH - LE (04.03.02.00) - For peripheral vascular lower extremity
-        - KNEE (17.05.XX.XX) - For knee conditions
-        - ANKLE (17.07.XX.XX) - For ankle conditions
-        - HIP (17.03.XX.XX) - For hip conditions
-        - LEG-AMPUT (17.01.02.XX) - For leg amputation
-        
-    Cardiovascular:
-        - CARDIO-HEART (03.01--03.06) - For heart conditions
-        - PULM CIRC (04.04.00.00) - For pulmonary circulation
-        - RESPIRATORY (05.01--05.03) - For respiratory conditions
-        
-    Digestive and Internal:
-        - UPPER DIGEST (06.01.00.00) - For upper digestive system
-        - LIVER (06.04.00.00) - For liver conditions
-        - URINARY (07.01--07.04) - For urinary conditions
-        
-    Mental and Neurological:
-        - PSYCHIATRIC (14.01.00.00) - For psychiatric conditions
-        - COGNITIVE IMP (13.04.00.00) - For cognitive impairment
-        - LANGUAGE DISOR (13.05.00.00) - For language disorders
-        
-    Other Systems:
-        - MASTICATION (11.03.02.00) - For dental/jaw conditions
-        - VISION (12.01--12.03) - For vision impairment
-        - SKIN-SCARS (08.01--08.02) - For skin and scar conditions
-    """
-
-    if mode == "detailed":
-        return base_instructions + """
-    Additionally, provide a detailed analysis including:
-    {
-  "analysisFramework": {
-    "I_PatientIdentificationAndContext": {
-      "required_elements": [
-        "patient_demographics",
-        "legal_claim_details",
-        "medical_claim_details",
-        "claim_number",
-        "incident_date",
-        "insurance_information"
-      ]
-    },
-    "II_InjuryAssessment": {
-      "injury_characteristics": {
-        "required_elements": [
-          "injury_type_and_classification",
-          "affected_body_parts",
-          "injury_mechanism",
-          "chronological_progression"
-        ]
-      },
-      "impairment_evaluation": {
-        "required_elements": [
-          "whole_person_impairment_percentages",
-          "impairment_by_body_part",
-          "comparative_rating_analysis",
-          "substantiating_medical_evidence"
-        ]
-      }
-    },
-    "III_MedicalDiagnostics": {
-      "diagnostic_review": {
-        "required_elements": [
-          "diagnosed_conditions",
-          "icd10_codes",
-          "diagnostic_criteria",
-          "symptom_correlation"
-        ]
-      },
-      "treatment_history": {
-        "required_elements": [
-          "treatment_timeline",
-          "interventions_attempted",
-          "medical_procedures",
-          "rehabilitation_efforts",
-          "treatment_efficacy"
-        ]
-      }
-    },
-    "IV_ApportionmentAnalysis": {
-      "required_elements": [
-        "apportionment_percentages",
-        "apportionment_reasoning",
-        "pre_existing_conditions_source",
-        "comparative_impact",
-        "medical_rationale"
-      ]
-    },
-    "V_FunctionalCapacity": {
-      "work_limitations": {
-        "required_elements": [
-          "work_restrictions",
-          "capacity_evaluation_results",
-          "employability_impact",
-          "vocational_rehabilitation_potential"
-        ]
-      },
-      "adl_impact": {
-        "required_elements": [
-          "personal_activity_limitations",
-          "professional_activity_limitations",
-          "functional_deficits",
-          "long_term_prognosis"
-        ]
-      }
-    },
-    "VI_FutureMedicalConsiderations": {
-      "required_elements": [
-        "projected_treatments",
-        "future_care_duration",
-        "anticipated_interventions",
-        "rehabilitation_needs",
-        "cost_estimates"
-      ]
-    },
-    "VII_CriticalAnalysis": {
-      "unique_insights": {
-        "required_elements": [
-          "unusual_medical_findings",
-          "complex_injury_interactions",
-          "legal_implications",
-          "medical_anomalies"
-        ]
-      },
-      "recommendations": {
-        "required_elements": [
-          "medical_recommendations",
-          "vocational_recommendations",
-          "dispute_resolution_strategies",
-          "areas_needing_investigation"
-        ]
-      }
-    },
-    "output_requirements": {
-      "formatting": [
-        "professional_medical_legal_terminology",
-        "precise_quantifiable_information",
-        "specific_section_citations",
-        "objective_factual_reporting"
-      ],
-      "deliverable_characteristics": [
-        "comprehensive_information_capture",
-        "quick_understanding_enablement",
-        "decision_making_support",
-        "actionable_insights"
-      ],
-      "quality_controls": [
-        "complete_accuracy",
-        "cross_referenced_information",
-        "explicit_limitation_statements"
-      ]
-    }
-  }
-}
-    }"""
-    
-    return base_instructions + """
-    Return ONLY a valid JSON object with these exact fields, no additional text or markdown:
-    {
-        "age": int,
-        "occupation": string,
-        "impairments": [
-            {
-                "body_part": string,
-                "wpi": float,
-                "pain_addon": float  # Pain add-on percentage for this specific impairment (max 3%)
-            }
-        ]
-    }
-    
-    IMPORTANT: 
-    1. Return ONLY the JSON object, no markdown formatting or additional text
-    2. Ensure all string values are properly quoted
-    3. Use numbers for numeric values (no quotes)
-    4. Format the JSON exactly as shown above
-    """
-
-def process_medical_report(uploaded_file, manual_data=None, mode="default"):
-    try:
-        # Save uploaded file temporarily
-        with open("temp_file.pdf", "wb") as f:
-            f.write(uploaded_file.getvalue())
-            
-        # Create OpenAI file
-        openai_file = client.files.create(
-            file=open("temp_file.pdf", "rb"),
-            purpose="assistants"
-        )
-        st.info("File uploaded successfully")
-        
-        # Create vector store for file search
-        vector_store = client.beta.vector_stores.create(
-            name="Medical Report Store"
-        )
-        
-        # Add file to vector store and wait for processing
-        file_batch = client.beta.vector_stores.file_batches.create_and_poll(
-            vector_store_id=vector_store.id,
-            file_ids=[openai_file.id]
-        )
-        
-        if file_batch.status != "completed":
-            st.error(f"File processing failed with status: {file_batch.status}")
-            st.stop()
-            
-        st.success("File processed successfully")
-            
-        # Create assistant with file search enabled
-        assistant = client.beta.assistants.create(
-            name="Medical Report Assistant",
-            instructions=get_assistant_instructions(mode),
-            tools=[{"type": "file_search"}],
-            model="gpt-4o-mini",
-            tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}}
-        )
-        
-        # Create thread and message for AI analysi
-        thread = client.beta.threads.create()
-        
-        # Run assistant
-        with st.spinner("Analyzing report..."):
-            run = client.beta.threads.runs.create_and_poll(
-                thread_id=thread.id,
-                assistant_id=assistant.id
-            )
-        
-        if run.status == "completed":
-            messages = client.beta.threads.messages.list(thread_id=thread.id)
-            response_text = messages.data[0].content[0].text.value
-            
-            # Parse JSON from response with improved error handling
-            try:
-                # First try direct JSON parsing
-                extracted_data = json.loads(response_text)
-                
-                # Override with manual data if provided
-                if manual_data:
-                    if manual_data.get("age"):
-                        extracted_data["age"] = manual_data["age"]
-                    if manual_data.get("occupation"):
-                        extracted_data["occupation"] = manual_data["occupation"]
-                
-                return process_extracted_data(extracted_data)
-            except json.JSONDecodeError:
-                # Try to find JSON in markdown code blocks
-                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
-                if json_match:
-                    try:
-                        extracted_data = json.loads(json_match.group(1))
-                        return process_extracted_data(extracted_data)
-                    except json.JSONDecodeError as e:
-                        st.error(f"Invalid JSON in code block: {str(e)}")
-                        st.text("Response text:")
-                        st.code(response_text)
-                        raise ValueError(f"Invalid JSON in code block: {str(e)}")
-                
-                # Try to find any JSON-like structure
-                json_match = re.search(r'\{[^}]+\}', response_text, re.DOTALL)
-                if json_match:
-                    try:
-                        extracted_data = json.loads(json_match.group(0))
-                        return process_extracted_data(extracted_data)
-                    except json.JSONDecodeError as e:
-                        st.error(f"Invalid JSON structure: {str(e)}")
-                        st.text("Response text:")
-                        st.code(response_text)
-                        raise ValueError(f"Invalid JSON structure: {str(e)}")
-                
-                # If no JSON found, show the full response for debugging
-                st.error("Could not find valid JSON in response")
-                st.text("Full response text:")
-                st.code(response_text)
-                raise ValueError("Could not parse JSON from assistant response")
-        else:
-            raise Exception(f"Assistant run failed with status: {run.status}")
-            
-    except Exception as e:
-        raise Exception(f"Error processing medical report: {str(e)}")
-    finally:
-        # Cleanup
-        try:
-            os.remove("temp_file.pdf")
-        except:
-            pass
-
-def process_extracted_data(data):
-    try:
-        age = data["age"]
-        occupation = data["occupation"]
-        impairments = data["impairments"]
-
-        # Get occupation group
-        group_number = get_occupation_group(occupation)
-
-        # Process each impairment
-        wpi_list = []
-        calculation_details = []
-        
-        for imp in impairments:
-            body_part = imp["body_part"]
-            original_wpi = float(imp["wpi"])
-            # Get pain add-on for this specific impairment (max 3%)
-            pain_addon = min(imp.get("pain_addon", 0.0), 3.0)
-
-            # Map body part to impairment code
-            impairment_code = map_body_part_to_code(body_part)
-            
-            # Get variant info
-            variant_info = get_variant_for_impairment(group_number, impairment_code)
-            variant_label = variant_info.get("variant_label", "variant1")
-
-            # Add pain add-on to base WPI before 1.4 multiplier
-            base_wpi = original_wpi + pain_addon
-            adjusted_wpi = base_wpi * 1.4  # Apply 1.4 multiplier after adding pain
-            
-            # Get occupational adjustment using the adjusted WPI and variant
-            occupant_adjusted_wpi = get_occupational_adjusted_wpi(group_number, variant_label, adjusted_wpi)
-            
-            # Get age adjustment using the occupationally adjusted WPI
-            age_adjusted_wpi = get_age_adjusted_wpi(age, occupant_adjusted_wpi)
-            wpi_list.append(age_adjusted_wpi)
-            
-            # Store calculation details
-            calculation_details.append({
-                "body_part": body_part,
-                "impairment_code": impairment_code,
-                "group_number": group_number,
-                "variant": variant_label,
-                "original_wpi": original_wpi,
-                "pain_addon": pain_addon,
-                "base_wpi": base_wpi,
-                "adjusted_wpi": adjusted_wpi,
-                "occupant_adjusted_wpi": occupant_adjusted_wpi,
-                "age_adjusted_wpi": age_adjusted_wpi
-            })
-
-        # Calculate final values
-        final_pd_percent = combine_wpi_values(wpi_list)
-        result = calculate_pd_payout(final_pd_percent, calculation_details, age)
-        
-        # Add detailed summary if available
-        if "detailed_summary" in data:
-            result["detailed_summary"] = data["detailed_summary"]
-            
-        return result
-
-    except Exception as e:
-        raise Exception(f"Error processing extracted data: {str(e)}")
-
-def map_body_part_to_code(body_part: str) -> str:
-    """Maps body part descriptions to standardized impairment codes."""
-    body_part_lower = body_part.lower().strip()
-    
-    # Spine and Nervous System
-    if any(term in body_part_lower for term in ["spine", "back", "lumbar", "thoracic", "cervical", "neck"]):
-        if "lumbar" in body_part_lower and ("range" in body_part_lower or "motion" in body_part_lower or "rom" in body_part_lower):
-            return "15.03.02.05"
-        elif "cervical" in body_part_lower and ("range" in body_part_lower or "motion" in body_part_lower or "rom" in body_part_lower):
-            return "15.01.02.05"
-        return "15.03.02.05"  # Default to lumbar if not specified
-    
-    # Upper Extremities
-    if "shoulder" in body_part_lower:
-        if "range" in body_part_lower or "motion" in body_part_lower or "rom" in body_part_lower:
-            return "16.02.01.00"
-        return "16.02.01.00"
-    
-    if "elbow" in body_part_lower:
-        if "range" in body_part_lower or "motion" in body_part_lower or "rom" in body_part_lower:
-            return "16.03.01.00"
-        return "16.03.01.00"
-        
-    if "wrist" in body_part_lower:
-        if "range" in body_part_lower or "motion" in body_part_lower or "rom" in body_part_lower:
-            return "16.04.01.00"
-        return "16.04.01.00"
-        
-    if any(term in body_part_lower for term in ["hand", "finger", "thumb"]):
-        return "16.05.00.00"
-        
-    if "grip" in body_part_lower or "pinch" in body_part_lower:
-        return "16.01.04.00"
-        
-    # Lower Extremities
-    if "knee" in body_part_lower:
-        if "muscle" in body_part_lower or "strength" in body_part_lower:
-            return "17.05.05.00"
-        return "17.05.00.00"
-        
-    if "ankle" in body_part_lower:
-        return "17.07.00.00"
-        
-    if "hip" in body_part_lower:
-        return "17.03.00.00"
-        
-    if "leg" in body_part_lower and "amput" in body_part_lower:
-        return "17.01.02.00"
-    
-    # Other Systems
-    if "mastication" in body_part_lower or "jaw" in body_part_lower:
-        return "11.03.02.00"
-    
-    # Generic mappings for unspecified conditions
-    if any(term in body_part_lower for term in ["arm", "upper extremity", "bicep", "tricep"]):
-        return "16.00.00.00"
-    if any(term in body_part_lower for term in ["leg", "lower extremity", "shin", "calf"]):
-        return "17.00.00.00"
-    
-    # Default to OTHER if no specific match found
-    return "00.00.00.00"
-
-def get_occupation_group(occupation: str) -> int:
-    # Handle special cases first
-    occupation_lower = occupation.lower()
-    if 'stocker' in occupation_lower or 'sorter' in occupation_lower:
-        return 360  # Same as packer group
-    
-    # Try to find in database
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT group_number FROM occupations WHERE occupation_title LIKE ?", ('%' + occupation + '%',))
-    result = cursor.fetchone()
-    conn.close()
-    
-    if not result:
-        raise ValueError(f"Occupation '{occupation}' not found in 'occupations' table.")
-    return result[0]
-
-def get_variant_for_impairment(group_num: int, impairment_code: str) -> Dict[str, Any]:
-    """Get variant information with flexible impairment code matching."""
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    table_name = "variants_2" if group_num >= 310 else "variants"
-    
-    # Map specific codes to general body parts for lookup
-    code_to_body_part = {
-        "SPINE-DRE-ROM": "SPINE",
-        "PERIPH-SPINE": "SPINE",
-        "PERIPH-UE": "ARM",
-        "PERIPH-LE": "LEG",
-        "ARM-AMPUT": "ARM",
-        "ARM-GRIP/PINCH": "ARM",
-        "SHOULDER-ROM": "SHOULDER",
-        "ELBOW-ROM": "ELBOW",
-        "WRIST-ROM": "WRIST",
-        "LEG-AMPUT": "LEG"
-    }
-    
-    # Convert specific codes to general body parts
-    lookup_code = code_to_body_part.get(impairment_code, impairment_code)
-    
-    # Try to find a match
-    cursor.execute(f"SELECT * FROM {table_name} WHERE body_part = ?", (lookup_code,))
-    result = cursor.fetchone()
-    
-    if not result:
-        # If no match found, try a more generic approach
-        if any(term in lookup_code.lower() for term in ["arm", "hand", "wrist", "elbow", "shoulder"]):
-            cursor.execute(f"SELECT * FROM {table_name} WHERE body_part = ?", ("ARM",))
-            result = cursor.fetchone()
-        elif any(term in lookup_code.lower() for term in ["leg", "knee", "ankle", "foot"]):
-            cursor.execute(f"SELECT * FROM {table_name} WHERE body_part = ?", ("LEG",))
-            result = cursor.fetchone()
-    
-    conn.close()
-    
-    if not result:
-        # Return a default variant if no match found
-        return {"variant_label": "G"}
-    
-    column_names = [description[0] for description in cursor.description]
-    variant_data = dict(zip(column_names, result))
-    
-    # Find the variant for the specific group number
-    group_key = f"group_{group_num}"
-    variant_label = variant_data.get(group_key)
-    if not variant_label:
-        # Return default variant if no specific group variant found
-        return {"variant_label": "G"}
-        
-    return {"variant_label": variant_label.lower()}
-
-def get_occupational_adjusted_wpi(group_num: int, variant_label: str, base_wpi: float) -> float:
-    """Get occupational adjusted WPI value from the table."""
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    # Find the closest rating_percent that's less than or equal to our WPI
-    cursor.execute("SELECT * FROM occupational_adjustments WHERE rating_percent <= ? ORDER BY rating_percent DESC LIMIT 1", (base_wpi,))
-    result = cursor.fetchone()
-    
-    if not result:
-        # If no match found, use the lowest rating
-        cursor.execute("SELECT * FROM occupational_adjustments ORDER BY rating_percent ASC LIMIT 1")
-        result = cursor.fetchone()
-        if not result:
-            conn.close()
-            return base_wpi  # Return unadjusted WPI if no data available
-    
-    column_names = [description[0].lower() for description in cursor.description]
-    
-    # Convert variant label to column name (c, d, e, f, g, h, i, j)
-    variant_label = variant_label.lower()
-    if variant_label in column_names:
-        adjustment_column = variant_label
-    else:
-        # Default to 'g' if variant not found
-        adjustment_column = 'g'
-    
-    try:
-        column_index = column_names.index(adjustment_column)
-        # Get the actual value from the table - this IS the adjusted WPI, not a multiplier
-        adjusted_wpi = float(result[column_index])
-        conn.close()
-        return adjusted_wpi
-    except (ValueError, IndexError):
-        conn.close()
-        return base_wpi
-
-def get_age_adjusted_wpi(age: int, raw_wpi: float) -> float:
-    """Get age adjusted WPI value from the table."""
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    # Find the closest wpi_percent that's greater than or equal to our raw_wpi
-    cursor.execute("SELECT * FROM age_adjustment WHERE wpi_percent <= ? ORDER BY wpi_percent DESC LIMIT 1", (raw_wpi,))
-    result = cursor.fetchone()
-    
-    if not result:
-        # If no match found, use the lowest WPI
-        cursor.execute("SELECT * FROM age_adjustment ORDER BY wpi_percent ASC LIMIT 1")
-        result = cursor.fetchone()
-        if not result:
-            conn.close()
-            raise ValueError("No data found in age adjustment table.")
-    
-    column_names = [description[0] for description in cursor.description]
-    age_ranges = {
-        (0, 22): "21_and_under",
-        (22, 27): "22_to_26",
-        (27, 32): "27_to_31",
-        (32, 37): "32_to_36",
-        (37, 42): "37_to_41",
-        (42, 47): "42_to_46",
-        (47, 52): "47_to_51",
-        (52, 57): "52_to_56",
-        (57, 62): "57_to_61",
-        (62, 150): "62_and_over"
-    }
-    
-    age_column = next((col for (start, end), col in age_ranges.items() if start <= age < end), None)
-    if not age_column:
-        conn.close()
-        raise ValueError(f"No age bracket found for age {age}")
-    
-    try:
-        # Get the actual value from the table - this IS the adjusted WPI
-        age_adjusted_wpi = float(result[column_names.index(age_column)])
-        conn.close()
-        return age_adjusted_wpi
-    except (ValueError, IndexError) as e:
-        conn.close()
-        raise ValueError(f"Error applying age adjustment: {str(e)}")
-
-from utils.calculations import combine_wpi_values
-
-def calculate_payment_weeks(total_pd: float) -> float:
-    """Calculate payment weeks based on PD percentage ranges."""
-    if total_pd < 10:
-        return total_pd * 4
-    elif total_pd < 24.75:
-        return total_pd * 5
-    elif total_pd < 29.75:
-        return total_pd * 6
-    elif total_pd < 49.75:
-        return total_pd * 7
-    elif total_pd < 69.75:
-        return total_pd * 8
-    elif total_pd < 99.75:
-        return total_pd * 9
-    else:
-        return total_pd * 9  # Maximum rate
-
-def calculate_pd_payout(final_pd_percent: float, calculation_details: List[Dict[str, Any]], age: int) -> Dict[str, Any]:
-    weeks = calculate_payment_weeks(final_pd_percent)
-    total_pd_dollars = weeks * 290.0
-    return {
-        "final_pd_percent": round(final_pd_percent, 2),
-        "weeks": round(weeks, 2),
-        "total_pd_dollars": round(total_pd_dollars, 2),
-        "calculation_details": calculation_details,
-        "age": age
-    }
-
-from utils.styling import (
-    get_card_css,
-    render_styled_card,
-    render_impairments_card,
-    render_combinations_card,
-    render_detailed_summary_card,
-    render_final_calculations_card
+import sqlite3
+from utils.database import init_database
+from utils.auth import check_password
+from utils.ui import (
+    setup_page,
+    render_upload_section,
+    render_manual_inputs,
+    render_display_mode_selector,
+    render_results
 )
+from utils.styling import get_card_css
+from utils.report_processor import process_medical_reports
 
 def main():
-    st.set_page_config(layout="wide")
-    st.markdown(get_card_css(), unsafe_allow_html=True)
+    """Main application entry point."""
+    # Set up page config first
+    st.set_page_config(
+        layout="wide",
+        initial_sidebar_state="expanded",
+        menu_items={
+            'About': 'Workers Compensation Rating Calculator',
+            'Get Help': None,
+            'Report a bug': None
+        }
+    )
     
+    # Check password before proceeding
+    if not check_password():
+        st.stop()
+    
+    # Setup remaining page elements
+    st.markdown(get_card_css(), unsafe_allow_html=True)
     st.title("PDRS Workers' Comp Rating Assistant")
-    # Remove display of Assistant ID and Vector Store
-
-    # Initialize database
-    if not os.path.exists(DATABASE_PATH):
-        os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+    
+    # Initialize database if needed
+    if not os.path.exists(os.path.dirname(os.environ.get('DATABASE_PATH', 'data/local.db'))):
+        os.makedirs(os.path.dirname(os.environ.get('DATABASE_PATH', 'data/local.db')), exist_ok=True)
         init_database()
 
-    st.subheader("Upload Medical Report PDF")
-    
-    # Add mode selection
-    mode = st.radio(
-        "Select Analysis Mode",
-        ["Standard Rating", "Detailed Summary"],
-        help="Standard Rating: Basic rating calculation\nDetailed Summary: Comprehensive analysis with detailed findings"
-    )
-    
-    uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
+    # Render upload section
+    mode, uploaded_files, combine_reports = render_upload_section()
 
-    # Add manual input section with expander
-    manual_inputs = st.expander("Manual Input Options")
-    with manual_inputs:
-        manual_age = st.number_input("Age at Time of Injury", min_value=0, max_value=100, value=0)
-        manual_occupation = st.text_input("Occupation")
+    # Get manual inputs
+    manual_data = render_manual_inputs()
     
-    # Add display mode toggle
-    display_mode = st.radio(
-        "Display Mode",
-        ["Standard", "Styled Cards"],
-        horizontal=True
-    )
-
-    if uploaded_file is not None:
-        if st.button("Process Report"):
+    # Get display mode preference
+    display_mode = render_display_mode_selector()
+    
+    # Add clear button
+    if st.button("Clear Results"):
+        if 'results' in st.session_state:
+            del st.session_state['results']
+        if 'combined_result' in st.session_state:
+            del st.session_state['combined_result']
+        st.rerun()
+    
+    # Display results if they exist in session state
+    if combine_reports and 'combined_result' in st.session_state:
+        st.subheader("Combined Results")
+        render_results(st.session_state.combined_result, display_mode)
+    elif not combine_reports and 'results' in st.session_state:
+        for i, result in enumerate(st.session_state.results):
+            with st.expander(f"Report {i + 1} Results", expanded=True):
+                render_results(result, display_mode)
+    
+    # Process reports if files are uploaded
+    if uploaded_files:
+        if st.button("Process Reports"):
             try:
                 with st.spinner("Processing..."):
-                    # Pass manual inputs to process_medical_report
-                    manual_data = {
-                        "age": manual_age if manual_age > 0 else None,
-                        "occupation": manual_occupation if manual_occupation.strip() else None
-                    }
-                    result = process_medical_report(
-                        uploaded_file, 
+                    # Process all files together
+                    st.info("Processing files...")
+                    result = process_medical_reports(
+                        uploaded_files,
                         manual_data,
                         "detailed" if mode == "Detailed Summary" else "default"
                     )
-                    st.success("Processing Complete!")
-
-                    details = result['calculation_details']
                     
-                    # Create two columns for display
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown("### NO APPORTIONMENT     100%")
-                        for detail in details:
-                            st.text(f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
-                                  f"{round(detail['adjusted_wpi'])} - {detail['group_number']}{detail['variant'].upper()} - "
-                                  f"{round(detail['occupant_adjusted_wpi'])} - {round(detail['age_adjusted_wpi'])}%) "
-                                  f"{round(detail['age_adjusted_wpi'])}%")
-                            st.text(f"{detail['body_part']}")
-                            st.text("")
-                            
-                        # Calculate and display combinations
-                        ratings = [str(round(d['age_adjusted_wpi'])) for d in details]
-                        st.text(f"{' C '.join(ratings)} = {round(result['final_pd_percent'])}%")
-                        st.text(f"Combined Rating{round(result['final_pd_percent'])}%")
-                        st.text(f"Total of All Add-ons for Pain 2%")
-                        st.text(f"Total Weeks of PD{round(result['weeks'], 2)}")
-                        st.text(f"Age on DOI {result.get('age', 'N/A')}")
-                        st.text(f"Average Weekly Earnings${result.get('weekly_earnings', '435.00')} (PD Statutory Max)")
-                        st.text(f"PD Weekly Rate:${result.get('weekly_rate', '290.00')}")
-                        st.text(f"Total PD Payout${round(result['total_pd_dollars'], 2)}")
-                        st.text("Return to Work Adjustments")
-                        st.text("")
-                        st.text("No RTW Adjustments for injuries on/after 1/1/2013.")
-                        st.text(f"Average Weekly Earnings ${result.get('life_pension_max', '515.38')} (Life Pension Statutory Max)")
-                        st.text(f"Life Pension Weekly Rate ${result.get('life_pension_rate', '85.0')}")
-                        
-                    with col2:
-                        st.markdown("### WITH APPORTIONMENT 90% and 80% CS LS")
-                        # Calculate apportioned values (90%)
-                        for detail in details:
-                            apportioned_wpi = round(detail['age_adjusted_wpi'] * 0.9, 2)
-                            st.text(f"({detail['impairment_code']} - {detail['original_wpi']} - [1.4] "
-                                  f"{round(detail['adjusted_wpi'])} - {detail['group_number']}{detail['variant'].upper()} - "
-                                  f"{round(detail['occupant_adjusted_wpi'])} - {apportioned_wpi}%) "
-                                  f"{apportioned_wpi}%")
-                            st.text(f"{detail['body_part']}")
-                            st.text("")
-                            
-                        # Calculate and display apportioned combinations
-                        apportioned_ratings = [str(round(d['age_adjusted_wpi'] * 0.9)) for d in details]
-                        apportioned_final = round(result['final_pd_percent'] * 0.9, 2)
-                        st.text(f"{' C '.join(apportioned_ratings)} = {apportioned_final}%")
-                        st.text(f"Combined Rating {apportioned_final}%")
-                        st.text(f"Total of All Add-ons for Pain 2%")
-                        st.text(f"Total Weeks of PD{round(result['weeks'] * 0.9, 2)}")
-                        st.text(f"Age on DOI {result.get('age', 'N/A')}")
-                        st.text(f"Average Weekly Earnings${result.get('weekly_earnings', '435.00')} (PD Statutory Max)")
-                        st.text(f"PD Weekly Rate:${result.get('weekly_rate', '290.00')}")
-                        st.text(f"Total PD Payout${round(result['total_pd_dollars'] * 0.9, 2)}")
-                        st.text("Return to Work Adjustments")
-                        st.text("")
-                        st.text("No RTW Adjustments for injuries on/after 1/1/2013.")
-                        st.text(f"Average Weekly Earnings ${result.get('life_pension_max', '515.38')} (Life Pension Statutory Max)")
-                        st.text(f"Life Pension Weekly Rate ${result.get('life_pension_rate', '85.0')}")
-                    
-                    # Add CMS Analysis section below columns
-                    st.text("")
-                    st.text(f"CMS Analysis ${round(result['total_pd_dollars'] * 0.4, 2)}")
-                    st.text(f"I would propose a split between {round(result['final_pd_percent'])}% and {round(result['final_pd_percent'] * 0.9)}%")
-                    st.text("")
-                    
-                    # Add final calculations
-                    cms_amount = round(result['total_pd_dollars'] * 0.4, 2)
-                    lp_amount = round(result['total_pd_dollars'] * 0.2, 2)
-                    total_demand = cms_amount + lp_amount
-                    
-                    st.text(f"CMS     =     ${cms_amount}")
-                    st.text(f"LP      =     ${lp_amount}")
-                    st.text("")
-                    st.text(f"Demand =     ${total_demand}  With a Voucher.")
-                    st.text("(Also may change based on Benefits print out.)")
-                    
-                    # Categorize body parts
-                    upper_extremities = []
-                    lower_extremities = []
-                    spine = []
-                    other = []
-                    
-                    for detail in details:
-                        body_part = detail['body_part'].lower()
-                        if any(term in body_part for term in ['arm', 'hand', 'wrist', 'elbow', 'shoulder', 'finger']):
-                            upper_extremities.append(detail)
-                        elif any(term in body_part for term in ['leg', 'knee', 'ankle', 'foot', 'hip', 'toe']):
-                            lower_extremities.append(detail)
-                        elif any(term in body_part for term in ['spine', 'back', 'lumbar', 'thoracic', 'cervical', 'neck']):
-                            spine.append(detail)
-                        elif any(term in body_part for term in ['mastication', 'jaw', 'dental', 'teeth', 'tmj', 'temporomandibular']):
-                            other.append(detail)  # Add mastication to other category
-                            st.text(f"Mastication/Dental Rating: {round(detail['age_adjusted_wpi'])}%")  # Display mastication rating
-                        else:
-                            other.append(detail)
-
-                    # Show combination steps
-                    if len(details) > 1:
-                        if display_mode == "Styled Cards":
-                            st.markdown(render_combinations_card(
-                                upper_extremities,
-                                lower_extremities,
-                                spine,
-                                other,
-                                result
-                            ), unsafe_allow_html=True)
-                        else:
-                            st.write("\n#### Combination Steps")
-                            # Combine upper extremities first if present
-                            if len(upper_extremities) > 1:
-                                ue_ratings = [str(round(d['age_adjusted_wpi'])) for d in upper_extremities]
-                                st.write(f"{' C '.join(ue_ratings)} = {round(combine_wpi_values([d['age_adjusted_wpi'] for d in upper_extremities]))}%")
-                            
-                            # Combine lower extremities if present
-                            if len(lower_extremities) > 1:
-                                le_ratings = [str(round(d['age_adjusted_wpi'])) for d in lower_extremities]
-                                st.write(f"{' C '.join(le_ratings)} = {round(combine_wpi_values([d['age_adjusted_wpi'] for d in lower_extremities]))}%")
-                            
-                            # Final combination of all regions
-                            all_ratings = []
-                            if upper_extremities:
-                                all_ratings.append(str(round(combine_wpi_values([d['age_adjusted_wpi'] for d in upper_extremities]))))
-                            if lower_extremities:
-                                all_ratings.append(str(round(combine_wpi_values([d['age_adjusted_wpi'] for d in lower_extremities]))))
-                            for s in spine:
-                                all_ratings.append(str(round(s['age_adjusted_wpi'])))
-                            for o in other:
-                                all_ratings.append(str(round(o['age_adjusted_wpi'])))
-                            
-                            st.write(f"{' C '.join(all_ratings)} = {round(result['final_pd_percent'])}%")
-                    
-                    # Display detailed summary if available
-                    if 'detailed_summary' in result:
-                        if display_mode == "Styled Cards":
-                            st.markdown(render_detailed_summary_card(result['detailed_summary']), unsafe_allow_html=True)
-                        else:
-                            st.write("\n### Detailed Analysis")
-                            st.write("#### Medical History")
-                            st.write(result['detailed_summary']['medical_history'])
-                            st.write("#### Injury Mechanism")
-                            st.write(result['detailed_summary']['injury_mechanism'])
-                            st.write("#### Treatment History")
-                            st.write(result['detailed_summary']['treatment_history'])
-                            st.write("#### Work Restrictions")
-                            st.write(result['detailed_summary']['work_restrictions'])
-                            st.write("#### Future Medical Needs")
-                            st.write(result['detailed_summary']['future_medical'])
-                            st.write("#### Apportionment")
-                            st.write(result['detailed_summary']['apportionment'])
-                            if result['detailed_summary']['additional_findings']:
-                                st.write("#### Additional Findings")
-                                st.write(result['detailed_summary']['additional_findings'])
-                    
-                    # Display final calculations
-                    if display_mode == "Styled Cards":
-                        st.markdown(render_final_calculations_card(result), unsafe_allow_html=True)
+                    # Store result
+                    if combine_reports:
+                        st.session_state.combined_result = result
                     else:
-                        st.write("\n#### Final Calculations")
-                        st.write(f"Combined Rating: {round(result['final_pd_percent'])}%")
-                        st.write(f"Total Weeks of PD: {round(result['weeks'], 2)}")
-                        st.write(f"Age on DOI: {result.get('age', 'N/A')}")
-                        st.write(f"PD Weekly Rate: $290.00")
-                        st.write(f"Total PD Payout: ${round(result['total_pd_dollars'], 2)}")
+                        st.session_state.results = [result]
+                    
+                    # Save to history
+                    conn = sqlite3.connect(os.environ.get('DATABASE_PATH', 'data/local.db'))
+                    try:
+                        # Extract relevant data
+                        summary = result if isinstance(result, str) else str(result)
+                        final_pd = result.get('no_apportionment', {}).get('final_pd_percent', None) if isinstance(result, dict) else None
+                        occupation = manual_data.get('occupation', None)
+                        age = manual_data.get('age', None)
+                        
+                        # Save combined result to history
+                        file_names = ", ".join(f.name for f in uploaded_files)
+                        conn.execute("""
+                            INSERT INTO history 
+                            (file_name, result_summary, final_pd_percent, occupation, age)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (file_names, summary, final_pd, occupation, age))
+                        conn.commit()
+                    except Exception as e:
+                        st.error(f"Error saving to history: {str(e)}")
+                    finally:
+                        conn.close()
+                    
+                    st.success("Processing Complete!")
+                    st.rerun()
+                    
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 

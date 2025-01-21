@@ -1,4 +1,25 @@
+# Environment variables and secrets
 .env
+.streamlit/secrets.toml
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# System files
 .DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
