@@ -1,11 +1,14 @@
 import os
 import json
 import re
+import io
 from typing import Dict, Any, List, Union
 import streamlit as st
 from openai import OpenAI
+import PyPDF2
 from utils.config import config
 from utils.auth import init_openai_client, get_assistant_instructions
+
 from utils.database import (
     get_occupation_group,
     get_variant_for_impairment,
@@ -14,6 +17,7 @@ from utils.database import (
 )
 from utils.calculations import combine_wpi_values
 from utils.formatting import format_rating_output
+import logging
 
 def map_body_part_to_code(body_part: str) -> str:
     """Maps body part descriptions to standardized impairment codes."""
@@ -151,6 +155,13 @@ def process_extracted_data(data: Dict[str, Any]) -> Dict[str, Any]:
         occupation = data["occupation"]
         impairments = data["impairments"]
 
+        # Check if occupation is in format like "380H" and extract variant if so
+        occupation_variant = None
+        if occupation and len(occupation) >= 3:
+            if occupation[:-1].isdigit() and occupation[-1].isalpha():
+                occupation_variant = occupation[-1].upper()
+                # Note: get_occupation_group will handle extracting just the number
+
         # Get occupation group
         group_number = get_occupation_group(occupation)
 
@@ -171,9 +182,12 @@ def process_extracted_data(data: Dict[str, Any]) -> Dict[str, Any]:
             # Map body part to impairment code
             impairment_code = map_body_part_to_code(body_part)
             
-            # Get variant info
-            variant_info = get_variant_for_impairment(group_number, impairment_code)
-            variant_label = variant_info.get("variant_label", "variant1")
+            # Get variant info - use extracted variant if available, otherwise get from database
+            if occupation_variant:
+                variant_label = occupation_variant
+            else:
+                variant_info = get_variant_for_impairment(group_number, impairment_code)
+                variant_label = variant_info.get("variant_label", "variant1")
 
             # Add pain add-on to base WPI before 1.4 multiplier
             base_wpi = original_wpi + pain_addon
@@ -237,81 +251,255 @@ def process_extracted_data(data: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         raise Exception(f"Error processing extracted data: {str(e)}")
 
-def process_medical_reports(uploaded_files, manual_data=None, mode="default") -> Union[str, Dict[str, Any]]:
-    """Process multiple medical report PDFs and extract relevant information."""
+# Store assistant and vector store as module-level variables to reuse them
+_assistant = None
+_vector_store = None
+
+def extract_text_from_pdf(pdf_file):
+    """Extract text from a PDF file.
+    
+    Args:
+        pdf_file: A file-like object containing the PDF
+        
+    Returns:
+        str: The extracted text from the PDF
+    """
     try:
+        # Create a PDF reader object
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        
+        # Extract text from each page
+        text = ""
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            text += page.extract_text() + "\n\n"
+            
+        return text
+    except Exception as e:
+        logging.error(f"Error extracting text from PDF: {str(e)}")
+        return ""
+
+def process_medical_reports(uploaded_files, manual_data=None, mode="default", progress_callback=None) -> Union[str, Dict[str, Any]]:
+    """Process multiple medical report PDFs and extract relevant information.
+    
+    Args:
+        uploaded_files: List of uploaded PDF files
+        manual_data: Optional manual data to override extracted values
+        mode: Processing mode ('default', 'detailed', or 'raw')
+        progress_callback: Optional callback function to report progress (0-100)
+        
+    Returns:
+        Either a formatted string (detailed mode) or a dictionary with rating data
+    """
+    global _assistant, _vector_store
+    client = None
+    openai_files = []
+    temp_files = []
+    use_direct_text = True  # Flag to determine if we should use direct text extraction
+    
+    try:
+        # Initialize progress reporting
+        if progress_callback:
+            progress_callback(5)
+            
         # Initialize OpenAI client
         client = init_openai_client()
+        if not client:
+            raise ValueError("Failed to initialize OpenAI client. Check your API key.")
         
-        # Create OpenAI files and save temp files
-        openai_files = []
-        temp_files = []
-        
-        for uploaded_file in uploaded_files:
-            # Get file extension and create temp file
-            file_extension = uploaded_file.name.split('.')[-1].lower()
-            temp_filename = f"temp_file_{len(temp_files)}.{file_extension}"
+        if progress_callback:
+            progress_callback(10)
             
-            # Save uploaded file temporarily
+        # Try direct text extraction first
+        extracted_text = ""
+        for i, uploaded_file in enumerate(uploaded_files):
+            # Get file extension
+            file_extension = uploaded_file.name.split('.')[-1].lower()
+            
+            # Save uploaded file temporarily for backup
+            temp_filename = f"temp_file_{len(temp_files)}.{file_extension}"
             with open(temp_filename, "wb") as f:
                 f.write(uploaded_file.getvalue())
             temp_files.append(temp_filename)
             
-            # Create OpenAI file
-            openai_file = client.files.create(
-                file=open(temp_filename, "rb"),
-                purpose="assistants"
-            )
-            openai_files.append(openai_file)
-            st.info(f"File uploaded successfully: {uploaded_file.name}")
+            # Extract text if it's a PDF
+            if file_extension.lower() == 'pdf':
+                # Reset file pointer to beginning
+                uploaded_file.seek(0)
+                file_text = extract_text_from_pdf(uploaded_file)
+                extracted_text += f"\n\n--- Document: {uploaded_file.name} ---\n\n{file_text}"
+            else:
+                # For non-PDF files, we'll need to use the vector store approach
+                use_direct_text = False
+                break
+                
+            # Update progress for text extraction (10-30%)
+            if progress_callback:
+                file_progress = 10 + (i + 1) * 20 // len(uploaded_files)
+                progress_callback(min(file_progress, 30))
         
-        # Create vector store for file search
-        vector_store = client.beta.vector_stores.create(
-            name="Medical Report Store"
-        )
+        # Check if the extracted text is too large for the context window
+        # The AI has a 200k context window, so we can use a much higher limit
+        # We'll use a limit of 180k characters to be safe
+        if len(extracted_text) > 180000:
+            st.info(f"Extracted text is too large ({len(extracted_text)} characters). Using vector store approach instead.")
+            use_direct_text = False
         
-        # Add all files to vector store and wait for processing
-        file_batch = client.beta.vector_stores.file_batches.create_and_poll(
-            vector_store_id=vector_store.id,
-            file_ids=[f.id for f in openai_files]
-        )
-        
-        if file_batch.status != "completed":
-            st.error(f"File processing failed with status: {file_batch.status}")
-            st.stop()
+        if use_direct_text and extracted_text:
+            st.info("Using direct text extraction approach")
             
-        st.success("File processed successfully")
+            if progress_callback:
+                progress_callback(50)
             
-        # Create assistant with file search enabled
-        assistant = client.beta.assistants.create(
-            name="Medical Report Assistant",
-            instructions=get_assistant_instructions(mode) + """
-            IMPORTANT: You are analyzing multiple medical reports. When extracting information:
-            1. Look through all reports to find the most recent information
-            2. If there are multiple WPI ratings for the same body part, use the most recent one
-            3. Combine all unique body parts and their ratings
-            4. For occupation and age, use the most recent values
-            5. When finding pain add-ons, check all reports and use the most recent value for each body part
-            6. For apportionment, use the values from the most recent report for each body part
-            """,
-            tools=[{"type": "file_search"}],
-            model=config.openai_model,
-            tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}}
-        )
-        
-        # Create thread and message for AI analysis
-        thread = client.beta.threads.create()
-        
-        # Run assistant
-        with st.spinner("Analyzing report..."):
-            run = client.beta.threads.runs.create_and_poll(
+            # Create a thread with the extracted text as the message
+            thread = client.beta.threads.create()
+            message = client.beta.threads.messages.create(
                 thread_id=thread.id,
-                assistant_id=assistant.id
+                role="user",
+                content=f"Please analyze this medical report according to the instructions provided:\n\n{extracted_text}"
             )
+            
+            # Create or reuse assistant without file search
+            try:
+                # Create a new assistant only if we don't have one already
+                if _assistant is None:
+                    _assistant = client.beta.assistants.create(
+                        name="Medical Report Assistant",
+                        instructions=get_assistant_instructions(mode),
+                        model=config.openai_model
+                    )
+                    st.info("Created new assistant")
+                else:
+                    # Update the existing assistant with the current instructions
+                    _assistant = client.beta.assistants.update(
+                        assistant_id=_assistant.id,
+                        instructions=get_assistant_instructions(mode)
+                    )
+                    st.info("Updated existing assistant")
+                
+                if progress_callback:
+                    progress_callback(55)
+            except Exception as e:
+                raise ValueError(f"Failed to create/update assistant: {str(e)}")
+            
+            # Run assistant
+            with st.spinner("Analyzing report..."):
+                if progress_callback:
+                    progress_callback(60)
+                    
+                run = client.beta.threads.runs.create_and_poll(
+                    thread_id=thread.id,
+                    assistant_id=_assistant.id
+                )
+        else:
+            st.info("Using vector store approach")
+            
+            # Create OpenAI files
+            for i, uploaded_file in enumerate(uploaded_files):
+                # Reset file pointer to beginning
+                uploaded_file.seek(0)
+                
+                # Create OpenAI file
+                try:
+                    openai_file = client.files.create(
+                        file=open(temp_files[i], "rb"),
+                        purpose="assistants"
+                    )
+                    openai_files.append(openai_file)
+                    st.info(f"File uploaded to OpenAI: {uploaded_file.name}")
+                except Exception as e:
+                    raise ValueError(f"Failed to upload file to OpenAI: {str(e)}")
+            
+            # Create or reuse vector store for file search
+            try:
+                if progress_callback:
+                    progress_callback(35)
+                
+                # Create a new vector store or clear the existing one
+                if _vector_store is None:
+                    _vector_store = client.beta.vector_stores.create(
+                        name="Medical Report Store"
+                    )
+                    st.info("Created new vector store")
+                else:
+                    # Clear existing files from vector store
+                    st.info("Clearing existing vector store")
+                    # Note: OpenAI doesn't provide a direct way to clear a vector store
+                    # We'll just reuse the existing one and add new files
+                
+                if progress_callback:
+                    progress_callback(40)
+                    
+                # Add all files to vector store and wait for processing
+                file_batch = client.beta.vector_stores.file_batches.create_and_poll(
+                    vector_store_id=_vector_store.id,
+                    file_ids=[f.id for f in openai_files]
+                )
+                
+                if file_batch.status != "completed":
+                    raise ValueError(f"File processing failed with status: {file_batch.status}")
+                    
+                st.success("Files processed successfully")
+                
+                if progress_callback:
+                    progress_callback(50)
+            except Exception as e:
+                raise ValueError(f"Failed to process files in vector store: {str(e)}")
+                
+            # Create or reuse assistant with file search enabled
+            try:
+                # Create a new assistant only if we don't have one already
+                if _assistant is None:
+                    _assistant = client.beta.assistants.create(
+                        name="Medical Report Assistant",
+                        instructions=get_assistant_instructions(mode),
+                        tools=[{"type": "file_search"}],
+                        model=config.openai_model,
+                        tool_resources={"file_search": {"vector_store_ids": [_vector_store.id]}}
+                    )
+                    st.info("Created new assistant")
+                else:
+                    # Update the existing assistant with the current vector store and instructions
+                    _assistant = client.beta.assistants.update(
+                        assistant_id=_assistant.id,
+                        instructions=get_assistant_instructions(mode),
+                        tools=[{"type": "file_search"}],
+                        tool_resources={"file_search": {"vector_store_ids": [_vector_store.id]}}
+                    )
+                    st.info("Updated existing assistant")
+                
+                if progress_callback:
+                    progress_callback(55)
+            except Exception as e:
+                raise ValueError(f"Failed to create/update assistant: {str(e)}")
+            
+            # Create thread and message for AI analysis
+            thread = client.beta.threads.create()
+            message = client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content="Please analyze this medical report according to the instructions provided."
+            )
+            
+            # Run assistant
+            with st.spinner("Analyzing report..."):
+                if progress_callback:
+                    progress_callback(60)
+                    
+                run = client.beta.threads.runs.create_and_poll(
+                    thread_id=thread.id,
+                    assistant_id=_assistant.id
+                )
+            
+            if progress_callback:
+                progress_callback(80)
         
         if run.status == "completed":
             messages = client.beta.threads.messages.list(thread_id=thread.id)
             response_text = messages.data[0].content[0].text.value
+            
+            if progress_callback:
+                progress_callback(85)
             
             # For detailed mode, return the text summary directly
             if mode == "detailed":
@@ -319,73 +507,175 @@ def process_medical_reports(uploaded_files, manual_data=None, mode="default") ->
                     # Try to parse as JSON first in case it's wrapped
                     data = json.loads(response_text)
                     if isinstance(data, dict) and "detailed_summary" in data:
+                        if progress_callback:
+                            progress_callback(95)
                         return data["detailed_summary"]
                 except json.JSONDecodeError:
                     # If not JSON, return the raw text
+                    if progress_callback:
+                        progress_callback(95)
                     return response_text.strip()
             
             # For rating calculation modes, parse JSON and process
-            try:
-                # First try direct JSON parsing
-                extracted_data = json.loads(response_text)
+            extracted_data = extract_json_from_response(response_text)
+            
+            if progress_callback:
+                progress_callback(90)
+            
+            # Override with manual data if provided
+            if manual_data:
+                if manual_data.get("age"):
+                    extracted_data["age"] = manual_data["age"]
+                if manual_data.get("occupation"):
+                    extracted_data["occupation"] = manual_data["occupation"]
+            
+            result = process_extracted_data(extracted_data)
+            
+            if progress_callback:
+                progress_callback(95)
                 
-                # Override with manual data if provided
-                if manual_data:
-                    if manual_data.get("age"):
-                        extracted_data["age"] = manual_data["age"]
-                    if manual_data.get("occupation"):
-                        extracted_data["occupation"] = manual_data["occupation"]
-                
-                result = process_extracted_data(extracted_data)
-                if mode == "raw":
-                    return result
-                return format_rating_output(result)
-            except json.JSONDecodeError:
-                # Try to find JSON in markdown code blocks
-                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
-                if json_match:
-                    try:
-                        extracted_data = json.loads(json_match.group(1))
-                        result = process_extracted_data(extracted_data)
-                        if mode == "raw":
-                            return result
-                        return format_rating_output(result)
-                    except json.JSONDecodeError as e:
-                        st.error(f"Invalid JSON in code block: {str(e)}")
-                        st.text("Response text:")
-                        st.code(response_text)
-                        raise ValueError(f"Invalid JSON in code block: {str(e)}")
-                
-                # Try to find any JSON-like structure
-                json_match = re.search(r'\{[^}]+\}', response_text, re.DOTALL)
-                if json_match:
-                    try:
-                        extracted_data = json.loads(json_match.group(0))
-                        result = process_extracted_data(extracted_data)
-                        if mode == "raw":
-                            return result
-                        return format_rating_output(result)
-                    except json.JSONDecodeError as e:
-                        st.error(f"Invalid JSON structure: {str(e)}")
-                        st.text("Response text:")
-                        st.code(response_text)
-                        raise ValueError(f"Invalid JSON structure: {str(e)}")
-                
-                # If no JSON found, show the full response for debugging
-                st.error("Could not find valid JSON in response")
-                st.text("Full response text:")
-                st.code(response_text)
-                raise ValueError("Could not parse JSON from assistant response")
+            if mode == "raw":
+                return result
+            return format_rating_output(result)
         else:
-            raise Exception(f"Assistant run failed with status: {run.status}")
+            raise ValueError(f"Assistant run failed with status: {run.status}")
             
     except Exception as e:
         raise Exception(f"Error processing medical report: {str(e)}")
     finally:
-        # Cleanup
-        # Cleanup all temp files
+        # Only clean up the OpenAI files, keep the assistant and vector store
+        if client:
+            # Clean up OpenAI files
+            for file in openai_files:
+                try:
+                    client.files.delete(file_id=file.id)
+                except Exception:
+                    pass
+        
+        # Clean up temp files
         for temp_file in temp_files:
             try:
-                os.remove(temp_file)
-            except:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+            except Exception:
                 pass
+                
+        # Final progress update
+        if progress_callback:
+            progress_callback(100)
+
+def extract_json_from_response(response_text: str) -> Dict[str, Any]:
+    """Extract JSON data from the assistant's response text.
+    
+    This function uses a deterministic approach to extract JSON from various response formats.
+    It tries multiple methods in a consistent order and logs which method was successful.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Log the raw response for debugging
+    logger.info("Extracting JSON from response")
+    logger.debug(f"Raw response length: {len(response_text)} characters")
+    
+    # Store all extraction attempts and their results
+    extraction_attempts = []
+    
+    # Method 1: Direct JSON parsing
+    try:
+        result = json.loads(response_text)
+        logger.info(f"Successfully parsed JSON directly. Found {len(result.get('impairments', []))} impairments.")
+        extraction_attempts.append(("direct_json", result))
+    except json.JSONDecodeError as e:
+        logger.debug(f"Direct JSON parsing failed: {str(e)}")
+    
+    # Method 2: Find JSON in markdown code blocks
+    json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+    if json_match:
+        try:
+            result = json.loads(json_match.group(1))
+            logger.info(f"Successfully parsed JSON from code block. Found {len(result.get('impairments', []))} impairments.")
+            extraction_attempts.append(("code_block", result))
+        except json.JSONDecodeError as e:
+            logger.debug(f"Code block JSON parsing failed: {str(e)}")
+    
+    # Method 3: Find any JSON-like structure with a comprehensive regex
+    json_match = re.search(r'\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}', response_text, re.DOTALL)
+    if json_match:
+        try:
+            result = json.loads(json_match.group(0))
+            logger.info(f"Successfully parsed JSON from regex. Found {len(result.get('impairments', []))} impairments.")
+            extraction_attempts.append(("regex", result))
+        except json.JSONDecodeError as e:
+            logger.debug(f"Regex JSON parsing failed: {str(e)}")
+    
+    # Method 4: Extract just the impairments array if it exists
+    impairments_match = re.search(r'"impairments"\s*:\s*(\[.*?\])', response_text, re.DOTALL)
+    if impairments_match:
+        try:
+            # Create a minimal valid JSON with just the impairments
+            impairments_json = f'{{"impairments": {impairments_match.group(1)}, "age": 0, "occupation": "unknown"}}'
+            result = json.loads(impairments_json)
+            logger.info(f"Extracted just impairments array. Found {len(result.get('impairments', []))} impairments.")
+            extraction_attempts.append(("impairments_only", result))
+        except json.JSONDecodeError as e:
+            logger.debug(f"Impairments extraction failed: {str(e)}")
+    
+    # If we have any successful extractions, use the first one (most reliable method)
+    if extraction_attempts:
+        method, result = extraction_attempts[0]
+        logger.info(f"Using extraction method: {method}")
+        
+        # Validate the extracted data
+        if not isinstance(result, dict):
+            raise ValueError(f"Extracted data is not a dictionary: {type(result)}")
+        
+        required_fields = ["age", "occupation", "impairments"]
+        for field in required_fields:
+            if field not in result:
+                logger.warning(f"Missing required field '{field}' in extracted data")
+                if field == "impairments":
+                    result[field] = []
+                else:
+                    result[field] = "unknown" if field == "occupation" else 0
+        
+        # Validate impairments
+        if not isinstance(result["impairments"], list):
+            logger.warning("Impairments is not a list, converting to empty list")
+            result["impairments"] = []
+        
+        for i, imp in enumerate(result["impairments"]):
+            if not isinstance(imp, dict):
+                logger.warning(f"Impairment {i} is not a dictionary, removing")
+                result["impairments"][i] = None
+                continue
+                
+            if "body_part" not in imp:
+                logger.warning(f"Impairment {i} missing body_part, adding default")
+                imp["body_part"] = "Unknown"
+                
+            if "wpi" not in imp:
+                logger.warning(f"Impairment {i} missing wpi, adding default")
+                imp["wpi"] = 0
+                
+            # Ensure pain_addon exists
+            if "pain_addon" not in imp:
+                logger.warning(f"Impairment {i} missing pain_addon, adding default")
+                imp["pain_addon"] = 0
+                
+            # Validate pain_addon is within range
+            if imp.get("pain_addon", 0) > 3:
+                logger.warning(f"Pain addon for impairment {i} exceeds maximum (3), capping at 3")
+                imp["pain_addon"] = 3
+        
+        # Remove any None values from impairments
+        result["impairments"] = [imp for imp in result["impairments"] if imp is not None]
+        
+        # Log the final impairments list
+        logger.info(f"Final impairments list: {result['impairments']}")
+        
+        return result
+    
+    # If we got here, we couldn't find valid JSON
+    error_message = "Could not extract valid JSON from the assistant's response."
+    logger.error(error_message)
+    raise ValueError(error_message)

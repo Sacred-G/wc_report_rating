@@ -54,10 +54,14 @@ def render_styled_card(title, content, card_id):
     download_fn = f"downloadData_{card_id}"
     copy_fn = f"copyData_{card_id}"
     
+    # Properly escape content for JavaScript
+    # Replace backticks with escaped backticks, and escape newlines
+    escaped_content = content.replace('`', '\\`').replace('\n', '\\n')
+    
     js_code = f"""
     <script>
     function {download_fn}() {{
-        const data = `{content}`;
+        const data = `{escaped_content}`;
         const blob = new Blob([data], {{ type: 'text/plain' }});
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -67,7 +71,7 @@ def render_styled_card(title, content, card_id):
     }}
     
     function {copy_fn}() {{
-        const data = `{content}`;
+        const data = `{escaped_content}`;
         navigator.clipboard.writeText(data).then(() => {{
             alert('Copied to clipboard!');
         }});

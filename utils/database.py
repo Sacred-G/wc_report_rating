@@ -146,6 +146,14 @@ def init_database():
 
 def get_occupation_group(occupation: str) -> int:
     """Get occupation group number from database"""
+    print(f"DATABASE: Looking up occupation group for '{occupation}'")
+    # Check if the occupation is already in the format of a group number + variant
+    # For example, "380H" should return 380
+    if occupation and len(occupation) >= 3:
+        # Check if the format is like "XXXL" where XXX is a number and L is a letter
+        if occupation[:-1].isdigit() and occupation[-1].isalpha():
+            return int(occupation[:-1])
+    
     # Handle special cases first
     occupation_lower = occupation.lower()
     if 'stocker' in occupation_lower or 'sorter' in occupation_lower:
@@ -182,6 +190,7 @@ def get_occupation_group(occupation: str) -> int:
 
 def get_variant_for_impairment(group_num: int, impairment_code: str) -> Dict[str, Any]:
     """Get variant information with flexible impairment code matching."""
+    print(f"DATABASE: Looking up variant for group {group_num} and impairment '{impairment_code}'")
     conn = sqlite3.connect(config.database_path)
     cursor = conn.cursor()
     table_name = "variants_2" if group_num >= 310 else "variants"
@@ -250,6 +259,7 @@ def get_variant_for_impairment(group_num: int, impairment_code: str) -> Dict[str
 
 def get_occupational_adjusted_wpi(group_num: int, variant_label: str, base_wpi: float) -> float:
     """Get occupational adjusted WPI value from the table."""
+    print(f"DATABASE: Getting occupational adjustment for group {group_num}, variant {variant_label}, WPI {base_wpi}")
     conn = sqlite3.connect(config.database_path)
     cursor = conn.cursor()
     
@@ -285,12 +295,7 @@ def get_occupational_adjusted_wpi(group_num: int, variant_label: str, base_wpi: 
 
 def get_age_adjusted_wpi(age: int, raw_wpi: float) -> float:
     """Get age adjusted WPI value from the table."""
-    conn = sqlite3.connect(config.database_path)
-    cursor = conn.cursor()
-    
-    # Find the closest wpi_percent that's greater than or equal to our raw_wpi
-    cursor.execute("SELECT * FROM age_adjustment WHERE wpi_percent <= ? ORDER BY wpi_percent DESC LIMIT 1", (raw_wpi,))
-    """Get age adjusted WPI value from the table."""
+    print(f"DATABASE: Getting age adjustment for age {age}, WPI {raw_wpi}")
     conn = sqlite3.connect(config.database_path)
     cursor = conn.cursor()
     

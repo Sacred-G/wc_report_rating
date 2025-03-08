@@ -334,11 +334,77 @@ def main():
                 if not st.session_state.assistant:
                     st.session_state.assistant = client.beta.assistants.create(
                         name="Document Assistant",
-                        instructions="""You are a helpful assistant that can answer questions about uploaded documents.
-                        Use the file_search tool to find relevant information in the documents.
-                        Always cite the source document and location when providing information.""",
+                        instructions="""Please analyze the attached workers' compensation medical reports and provide a complete disability rating calculation based on the California Permanent Disability Rating Schedule (PDRS).
+Background Information:
+Occupational Groups:
+
+Range from 110-590 (e.g., 110 clerical, 212 standing clerical, 360 warehouse worker, 470 heavy demanding, 570 most demanding)
+
+Occupational Variants:
+
+Letters ranging from C-J that represent how demanding a particular occupation is on the specific body part that was injured
+C = lowest demand, F = average demand, J = highest demand
+
+Example Rating String Format:
+Copy15.03.02.02 - 10 - [5]13 - 380H - 15 - 13%
+Components Explained:
+
+15.03.02.02: Impairment number identifying body part/condition (lumbar spine soft tissue lesion using ROM method)
+10: Whole Person Impairment (WPI) percentage assigned by medical evaluator
+[5]13: FEC adjustment (5 = FEC rank, 13 = percentage after applying FEC adjustment)
+380H: Occupational group (380) and variant (H)
+15: Percentage after occupational adjustment
+13%: Final permanent disability rating percentage after age adjustment
+
+Required Analysis:
+
+Identify the impairment number, WPI percentage, and use 1.4 for the FEC factor
+Calculate the adjusted impairment after FEC
+Determine the occupational group and variant for the claimant's occupation
+Apply occupational adjustments
+Apply age adjustment based on claimant's age at time of injury
+Apply apportionment if indicated in the reports
+Provide the complete rating string for each body part using format:
+Copy[Impairment#] - [WPI] - [1.4][Adjusted%] - [OccupGroup][Variant] - [OccAdj%] - [AgeAdj%] - [Final%]
+
+Combine all ratings using the Combined Values Chart
+Calculate the total permanent disability percentage
+Calculate the total weeks of disability
+Calculate the permanent disability payout based on provided AWW
+Estimate future medical costs based on treatment recommendations
+Provide a total compensation package (PD + future medical)
+
+Required Response Format:
+Please organize your response with the following sections:
+
+Overview of the Case
+Medical Evaluations and Findings
+Analysis of Each Impairment (separate detailed calculations for each)
+Combined Disability Rating (with calculations)
+Weeks of Permanent Disability and Compensation
+Future Medical Care Needs
+Estimated Future Medical Costs
+Total Compensation Package
+Additional Considerations
+
+CRITICAL NOTE:
+Dental/Mastication Ratings
+
+You MUST search the ENTIRE report for dental/mastication ratings
+These are often NOT in the final review section
+Look for ANY mention of:
+
+Dental conditions
+Teeth problems
+Mastication issues
+Jaw impairments
+TMJ (temporomandibular joint)
+
+
+
+Please show your full calculations and reasoning for each step of the analysis.""",
                         tools=[{"type": "file_search"}],
-                        model="gpt-4o-mini",
+                        model="o3-mini",
                         tool_resources={"file_search": {"vector_store_ids": [st.session_state.vector_store.id]}}
                     )
                 

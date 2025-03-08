@@ -15,7 +15,7 @@ name = "postgres"  # Set via DB_NAME env var
 
 [openai]
 api_key = ""  # Set via OPENAI_API_KEY env var
-model = "gpt-4o-mini"
+model = "o3-mini"
 assistant_id = ""  # Set via ASSISTANT_ID env var
 vector_store = ""  # Set via VECTOR_STORE env var
 
